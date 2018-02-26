@@ -1,5 +1,0 @@
-{
-  "family": "voxel_ae",
-  "batch_size": 64,
-  "learning_rate": 1e-4
-}

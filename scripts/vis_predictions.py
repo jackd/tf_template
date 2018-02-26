@@ -3,7 +3,7 @@ def main(model_id):
     import tensorflow as tf
     from tf_template.model import get_builder
     tf.logging.set_verbosity(tf.logging.INFO)
-    builder = get_builder('example')
+    builder = get_builder(model_id)
     builder.vis_predictions()
 
 

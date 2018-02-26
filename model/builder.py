@@ -157,10 +157,10 @@ class ModelBuilder(object):
         inference_loss = self.get_inference_loss(inference, labels)
         loss = self.get_total_loss(inference_loss)
         spec_kwargs['loss'] = loss
+        spec_kwargs['eval_metric_ops'] = self.get_eval_metric_ops(
+            predictions, labels)
 
         if mode == tf.estimator.ModeKeys.EVAL:
-            spec_kwargs['eval_metric_ops'] = self.get_eval_metric_ops(
-                predictions, labels)
             return tf.estimator.EstimatorSpec(**spec_kwargs)
 
         step = tf.train.get_or_create_global_step()
@@ -289,3 +289,6 @@ class ModelBuilder(object):
                 while not sess.should_stop():
                     data = sess.run([predictions, features, labels])
                     self.vis_prediction_data(*data)
+
+    def evaluation_report(self, evaluation):
+        print(evaluation)
