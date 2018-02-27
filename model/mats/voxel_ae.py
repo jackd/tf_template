@@ -17,6 +17,19 @@ def show():
 
 
 class VoxelAEBuilder(ModelBuilder):
+    @staticmethod
+    def from_id(model_id):
+        from tf_template.model import load_params
+        params = load_params(model_id)
+        if params['family'] != 'voxel_ae':
+            raise ValueError(
+                'parameters for model %s have family other than "voxel_ae"')
+        return VoxelAEBuilder(model_id, params)
+
+    @property
+    def embedding_dim(self):
+        return self.params.get('embedding_dim', 64)
+
     def encode_voxels(self, voxels, mode):
         # training = mode == tf.estimator.ModeKeys.TRAIN
         encoder_params = self.params.get('encoder', {})
@@ -32,7 +45,8 @@ class VoxelAEBuilder(ModelBuilder):
                 #     x, scale=False, training=training)
                 # x = tf.layers.max_pooling3d(x, 3, 2)
             x = tf.layers.flatten(x)
-            x = tf.layers.dense(x, 64, activation=tf.keras.layers.PReLU())
+            x = tf.layers.dense(
+                x, self.embedding_dim, activation=tf.keras.layers.PReLU())
         return x
 
     def decode(self, latent, mode):
@@ -60,12 +74,17 @@ class VoxelAEBuilder(ModelBuilder):
 
     def get_inference(self, features, mode):
         """Get inferred value of the model."""
-        return self.decode(self.encode_voxels(features, mode), mode)
+        voxels = features['voxels']
+        example_id = features['example_id']
+        encoding = self.encode_voxels(voxels, mode)
+        decoding = self.decode(encoding, mode)
+        return dict(
+            encoding=encoding, decoding=decoding, example_id=example_id)
 
     def get_inference_loss(self, inference, labels):
         """Get the loss assocaited with inferences."""
         loss_type = self.params.get('loss_type', 'x-entropy')
-        logits = inference
+        logits = inference['decoding']
         if loss_type == 'x-entropy':
             if labels.dtype != tf.float32:
                 labels = tf.cast(labels, tf.float32)
@@ -94,22 +113,15 @@ class VoxelAEBuilder(ModelBuilder):
         return self.params.get('batch_size', 64)
 
     def get_dataset(self, mode, include_labels=True):
-        from shapenet.core import get_example_ids, cat_desc_to_id
+        from shapenet.core import cat_desc_to_id
+        from ids import get_example_ids
         from shapenet.core.voxels.config import VoxelConfig
-        import random
 
         cat_desc = self.params.get('cat', 'bed')
         voxel_dim = self.params.get('voxel_dim', 20)
 
         cat_id = cat_desc_to_id(cat_desc)
-        example_ids = list(get_example_ids(cat_id))
-        random.seed(0)
-        random.shuffle(example_ids)
-        n = int(0.8*len(example_ids))
-        if mode == 'train':
-            example_ids = example_ids[:n]
-        else:
-            example_ids = example_ids[n:]
+        example_ids = get_example_ids(cat_id, mode)
 
         config = VoxelConfig(voxel_dim=voxel_dim)
         dataset = config.get_dataset(cat_id)
@@ -117,18 +129,19 @@ class VoxelAEBuilder(ModelBuilder):
         def gen_fn():
             with dataset:
                 for example_id in example_ids:
-                    yield dataset[example_id].data
+                    yield example_id, dataset[example_id].data
 
         tf_dataset = tf.data.Dataset.from_generator(
-            gen_fn, output_types=tf.bool,
-            output_shapes=(voxel_dim,)*3)
+            gen_fn, output_types=(tf.string, tf.bool),
+            output_shapes=((), (voxel_dim,)*3))
 
-        def map_fn(voxels):
+        def map_fn(example_id, voxels):
             voxels = tf.cast(voxels, tf.float32)
+            features = dict(example_id=example_id, voxels=voxels)
             if include_labels:
-                return voxels, voxels
+                return features, voxels
             else:
-                return voxels
+                return features
 
         return tf_dataset.map(map_fn, num_parallel_calls=8)
 
@@ -193,13 +206,15 @@ class VoxelAEBuilder(ModelBuilder):
             show()
 
     def get_predictions(self, inferences):
-        logits = inferences
+        logits = inferences['decoding']
         probs = tf.nn.sigmoid(logits)
         predictions = {
             'pred_%.3f' % t: tf.greater(probs, t)
             for t in self.thresholds}
-        predictions['logits'] = inferences
+        predictions['logits'] = logits
         predictions['probabilities'] = probs
+        predictions['encoding'] = inferences['encoding']
+        predictions['example_id'] = inferences['example_id']
         return predictions
 
     @property

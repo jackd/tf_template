@@ -4,6 +4,8 @@ def main(model_id, max_steps):
     from tf_template.model import get_builder
     tf.logging.set_verbosity(tf.logging.INFO)
     builder = get_builder(model_id)
+    if builder.needs_custom_initialization:
+        builder.initialize_variables()
     builder.train(max_steps=max_steps)
 
 

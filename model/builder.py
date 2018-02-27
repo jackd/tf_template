@@ -2,8 +2,15 @@ from __future__ import division
 import os
 import tensorflow as tf
 
-
 estimator_dir = os.path.join(os.path.dirname(__file__), 'estimator')
+
+
+def initialize_uninitialized_variables(sess):
+    global_vars = tf.global_variables()
+    is_init = sess.run(
+        [tf.is_variable_initialized(var) for var in global_vars])
+    init_vars = [v for (v, i) in zip(global_vars, is_init) if not i]
+    sess.run(tf.variables_initializer(init_vars))
 
 
 class ModelBuilder(object):
@@ -33,6 +40,48 @@ class ModelBuilder(object):
     def __init__(self, model_id, params):
         self._model_id = model_id
         self._params = params
+        self._initial_run = False
+
+    @property
+    def initial_run(self):
+        return self._intiial_run
+
+    @property
+    def needs_custom_initialization(self):
+        """Flag indicating whether this model needs custom initialization."""
+        return False
+
+    def load_initial_variables(self, graph, sess):
+        pass
+
+    def initialize_variables(self):
+        if not self.needs_custom_initialization:
+            print('No initialization required: skipping')
+            return
+
+        model_dir = self.model_dir
+        if not os.path.isdir(model_dir):
+            os.makedirs(model_dir)
+        elif len(os.listdir(model_dir)) > 0:
+            print('Initialization already complete. Skipping.')
+            return
+        self._intiial_run = True
+        try:
+            graph = tf.Graph()
+            with graph.as_default():
+                with tf.Session() as sess:
+                    features, labels = self.get_train_inputs()
+                    self.get_estimator_spec(features, labels, 'train')
+                    self.load_initial_variables(graph, sess)
+                    initialize_uninitialized_variables(sess)
+                    saver = tf.train.Saver()
+                    save_path = os.path.join(self.model_dir, 'model')
+                    saver.save(sess, save_path, global_step=0)
+
+        except Exception:
+            self._intiial_run = False
+            raise
+        self._intiial_run = False
 
     @property
     def model_id(self):
@@ -213,7 +262,7 @@ class ModelBuilder(object):
         features = dataset.make_one_shot_iterator().get_next()
         return features, None
 
-    def get_inputs(self, mode):
+    def get_inputs(self, mode, **kwargs):
         """
         Convenience function for calling inputs with different modes.
 
@@ -223,11 +272,11 @@ class ModelBuilder(object):
             * `get_predict_inputs`.
         """
         if mode == tf.estimator.ModeKeys.TRAIN:
-            return self.get_train_inputs()
-        elif mode == tf.esitmator.ModeKeys.EVAL:
-            return self.get_eval_inputs()
+            return self.get_train_inputs(**kwargs)
+        elif mode == tf.estimator.ModeKeys.EVAL:
+            return self.get_eval_inputs(**kwargs)
         elif mode == tf.esitmator.ModeKeys.INFER:
-            return self.get_predict_inputs()
+            return self.get_predict_inputs(**kwargs)
 
     def get_estimator(self, config=None):
         """Get the `tf.estimator.Estimator` defined by this builder."""
@@ -239,14 +288,30 @@ class ModelBuilder(object):
         estimator = self.get_estimator(config=config)
         estimator.train(self.get_train_inputs, **train_kwargs)
 
-    def predict(self, config=None, **predict_kwargs):
+    def predict(
+            self, mode=tf.estimator.ModeKeys.PREDICT, config=None,
+            **predict_kwargs):
         """Wrapper around `tf.estimator.Estimator.predict`."""
         estimator = self.get_estimator(config=config)
-        return estimator.predict(self.get_predict_inputs, **predict_kwargs)
+        kwargs = dict(shuffle=False, repeat_count=1) if \
+            mode == tf.estimator.ModeKeys.TRAIN else {}
 
-    def eval(self, config=None, **eval_kwargs):
+        def input_fn():
+            return self.get_inputs(mode, **kwargs)
+
+        return estimator.predict(input_fn, **predict_kwargs)
+
+    def eval(
+            self, mode=tf.estimator.ModeKeys.EVAL, config=None,
+            **eval_kwargs):
         """Wrapper around `tf.estimator.Estimator.eval`."""
         estimator = self.get_estimator(config=config)
+
+        kwargs = dict(shuffle=False, repeat_count=1) if \
+            mode == tf.estimator.ModeKeys.TRAIN else {}
+
+        def input_fn():
+            return self.get_inputs(mode, **kwargs)
         return estimator.evaluate(self.get_eval_inputs, **eval_kwargs)
 
     def vis_inputs(self, mode=tf.estimator.ModeKeys.TRAIN):
