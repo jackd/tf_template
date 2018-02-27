@@ -65,13 +65,14 @@ class VoxelAEBuilder(ModelBuilder):
     def get_inference_loss(self, inference, labels):
         """Get the loss assocaited with inferences."""
         loss_type = self.params.get('loss_type', 'x-entropy')
+        logits = inference
         if loss_type == 'x-entropy':
             if labels.dtype != tf.float32:
                 labels = tf.cast(labels, tf.float32)
             return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-                logits=inference, labels=labels))
+                logits=logits, labels=labels))
         elif loss_type == 'mse':
-            return tf.reduce_mean((tf.sigmoid(inference) - labels)**2)
+            return tf.reduce_mean((tf.sigmoid(logits) - labels)**2)
         else:
             raise KeyError('Unrecognized `loss_type` %s' % loss_type)
 
