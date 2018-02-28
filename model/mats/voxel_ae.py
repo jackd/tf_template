@@ -26,6 +26,14 @@ class VoxelAEBuilder(ModelBuilder):
                 'parameters for model %s have family other than "voxel_ae"')
         return VoxelAEBuilder(model_id, params)
 
+    _encoder_scope = 'encoder'
+
+    _decoder_scope = 'decoder'
+
+    def get_cat_id(self):
+        from shapenet.core import cat_desc_to_id
+        return cat_desc_to_id(self.params['cat'])
+
     @property
     def embedding_dim(self):
         return self.params.get('embedding_dim', 64)
@@ -33,7 +41,7 @@ class VoxelAEBuilder(ModelBuilder):
     def encode_voxels(self, voxels, mode):
         # training = mode == tf.estimator.ModeKeys.TRAIN
         encoder_params = self.params.get('encoder', {})
-        with tf.variable_scope('encoder'):
+        with tf.variable_scope(VoxelAEBuilder._encoder_scope):
             x = tf.expand_dims(voxels, axis=-1)
             sizes = encoder_params.get('sizes', [7, 5, 3, 3])
             n_filters = encoder_params.get('n_filters', [16, 32, 16, 8])
@@ -52,7 +60,7 @@ class VoxelAEBuilder(ModelBuilder):
     def decode(self, latent, mode):
         n_final = 6
         decoder_params = self.params.get('decoder', {})
-        with tf.variable_scope('deocder'):
+        with tf.variable_scope(VoxelAEBuilder._decoder_scope):
             x = latent
             initial_depth = decoder_params.get('initial_depth', 8)
             x = tf.layers.dense(
@@ -72,6 +80,11 @@ class VoxelAEBuilder(ModelBuilder):
             x = tf.squeeze(x, axis=-1)
         return x
 
+    def load_decoder_variables(self, graph, sess):
+        var_list = tf.get_collection(tf.GraphKeys.VARIABLES, scope='decoder')
+        saver = tf.train.Saver(var_list)
+        saver.restore(sess, tf.train.latest_checkpoint(self.model_dir))
+
     def get_inference(self, features, mode):
         """Get inferred value of the model."""
         voxels = features['voxels']
@@ -79,7 +92,8 @@ class VoxelAEBuilder(ModelBuilder):
         encoding = self.encode_voxels(voxels, mode)
         decoding = self.decode(encoding, mode)
         return dict(
-            encoding=encoding, decoding=decoding, example_id=example_id)
+            original=voxels, encoding=encoding, decoding=decoding,
+            example_id=example_id)
 
     def get_inference_loss(self, inference, labels):
         """Get the loss assocaited with inferences."""
@@ -112,31 +126,38 @@ class VoxelAEBuilder(ModelBuilder):
     def batch_size(self):
         return self.params.get('batch_size', 64)
 
-    def get_dataset(self, mode, include_labels=True):
-        from shapenet.core import cat_desc_to_id
-        from ids import get_example_ids
+    @property
+    def voxel_dim(self):
+        return self.params.get('voxel_dim', 20)
+
+    def get_voxel_dataset(self):
         from shapenet.core.voxels.config import VoxelConfig
+        cat_id = self.get_cat_id()
+        config = VoxelConfig(voxel_dim=self.voxel_dim)
+        dataset = config.get_dataset(cat_id).map(lambda x: x.data)
+        return dataset
 
-        cat_desc = self.params.get('cat', 'bed')
-        voxel_dim = self.params.get('voxel_dim', 20)
+    def preprocess_voxels(self, voxels):
+        return tf.cast(voxels, tf.float32)
 
-        cat_id = cat_desc_to_id(cat_desc)
+    def get_dataset(self, mode, include_labels=True):
+        from ids import get_example_ids
+        cat_id = self.get_cat_id()
         example_ids = get_example_ids(cat_id, mode)
 
-        config = VoxelConfig(voxel_dim=voxel_dim)
-        dataset = config.get_dataset(cat_id)
+        dataset = self.get_voxel_dataset()
+        dataset.open()
 
         def gen_fn():
-            with dataset:
-                for example_id in example_ids:
-                    yield example_id, dataset[example_id].data
+            for example_id in example_ids:
+                yield example_id, dataset[example_id]
 
         tf_dataset = tf.data.Dataset.from_generator(
             gen_fn, output_types=(tf.string, tf.bool),
-            output_shapes=((), (voxel_dim,)*3))
+            output_shapes=((), (self.voxel_dim,)*3))
 
         def map_fn(example_id, voxels):
-            voxels = tf.cast(voxels, tf.float32)
+            voxels = self.preprocess_voxels(voxels)
             features = dict(example_id=example_id, voxels=voxels)
             if include_labels:
                 return features, voxels
@@ -182,12 +203,13 @@ class VoxelAEBuilder(ModelBuilder):
         Not necessary for training/evaluation/infering, but handy for
         debugging.
         """
-        for f, lab in zip(feature_data, label_data):
-            disp_voxels(f)
-            disp_voxels(lab)
-            show()
+        disp_voxels(feature_data['voxels'], color=(0, 0, 1))
+        disp_voxels(label_data, color=(0, 0, 1))
+        print(feature_data['example_id'])
+        show()
 
-    def vis_prediction_data(self, prediction_data, feature_data, label_data):
+    def vis_prediction_data(
+            self, prediction_data, feature_data, label_data=None):
         """
         Function for visualizing a batch of data for training or evaluation.
 
@@ -199,11 +221,15 @@ class VoxelAEBuilder(ModelBuilder):
         debugging.
         """
         threshold = 0.4
-        predictions = prediction_data['pred_%.3f' % threshold]
-        for pred, gt in zip(predictions, feature_data):
-            disp_voxels(pred, color=(0, 1, 0))
-            disp_voxels(gt, color=(0, 0, 1))
-            show()
+        pred = prediction_data['pred_%.3f' % threshold]
+        gt = prediction_data['original']
+        intersection = np.sum(np.logical_and(pred, gt))
+        union = np.sum(np.logical_or(pred, gt))
+        iou = intersection / union
+        disp_voxels(pred, color=(0, 1, 0))
+        disp_voxels(gt, color=(0, 0, 1))
+        print(iou)
+        show()
 
     def get_predictions(self, inferences):
         logits = inferences['decoding']
@@ -215,6 +241,7 @@ class VoxelAEBuilder(ModelBuilder):
         predictions['probabilities'] = probs
         predictions['encoding'] = inferences['encoding']
         predictions['example_id'] = inferences['example_id']
+        predictions['original'] = inferences['original']
         return predictions
 
     @property

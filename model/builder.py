@@ -1,8 +1,54 @@
 from __future__ import division
 import os
+import numpy as np
 import tensorflow as tf
 
 estimator_dir = os.path.join(os.path.dirname(__file__), 'estimator')
+
+
+def _tuple_generator(nested_vals):
+    iters = tuple(iter(nested_generator(v)) for v in nested_vals)
+    try:
+        while True:
+            yield tuple(next(i) for i in iters)
+    except StopIteration:
+        pass
+
+
+def _list_generator(nested_vals):
+    iters = tuple(iter(nested_generator(v)) for v in nested_vals)
+    try:
+        while True:
+            yield [next(i) for i in iters]
+    except StopIteration:
+        pass
+
+
+def _dict_generator(nested_vals):
+    iters = {k: iter(nested_generator(v)) for k, v in nested_vals.items()}
+    try:
+        while True:
+            yield {k: next(i) for k, i in iters.items()}
+    except StopIteration:
+        pass
+
+
+def nested_generator(nested_vals):
+    if isinstance(nested_vals, np.ndarray):
+        return nested_vals
+    elif isinstance(nested_vals, (list, tuple)):
+        if all(isinstance(v, str) for v in nested_vals):
+            return nested_vals
+        elif isinstance(nested_vals, tuple):
+            return _tuple_generator(nested_vals)
+        else:
+            return _list_generator(nested_vals)
+    elif isinstance(nested_vals, dict):
+        return _dict_generator(nested_vals)
+    else:
+        raise TypeError(
+            'Unrecognized type for nested_generator: %s'
+            % str(type(nested_vals)))
 
 
 def initialize_uninitialized_variables(sess):
@@ -52,7 +98,8 @@ class ModelBuilder(object):
         return False
 
     def load_initial_variables(self, graph, sess):
-        pass
+        raise NotImplementedError(
+            'Implementation required if `needs_custom_initialization` is True')
 
     def initialize_variables(self):
         if not self.needs_custom_initialization:
@@ -156,7 +203,8 @@ class ModelBuilder(object):
         """
         raise NotImplementedError()
 
-    def vis_prediction_data(self, prediction_data, feature_data, label_data):
+    def vis_prediction_data(
+            self, prediction_data, feature_data, label_data=None):
         """
         Function for visualizing a batch of data for training or evaluation.
 
@@ -322,17 +370,15 @@ class ModelBuilder(object):
         """
         graph = tf.Graph()
         with graph.as_default():
-            if mode == tf.estimator.ModeKeys.PREDICT:
-                features, labels = self.get_predict_inputs()
-            elif mode == tf.estimator.ModeKeys.TRAIN:
-                features, labels = self.get_train_inputs()
+            features, labels = self.get_inputs(mode)
 
             with tf.train.MonitoredSession() as sess:
                 while not sess.should_stop():
-                    feature_data, label_data = sess.run([features, labels])
-                    self.vis_example_data(feature_data, label_data)
+                    data = sess.run([features, labels])
+                    for record in nested_generator(data):
+                        self.vis_example_data(*record)
 
-    def vis_predictions(self, mode=tf.estimator.ModeKeys.TRAIN):
+    def vis_predictions(self, mode=tf.estimator.ModeKeys.PREDICT):
         """
         Visualize inputs and predictions defined by this model.
 
@@ -340,20 +386,22 @@ class ModelBuilder(object):
         """
         graph = tf.Graph()
         with graph.as_default():
-            if mode == tf.estimator.ModeKeys.PREDICT:
-                features, labels = self.get_predict_inputs()
-            elif mode == tf.estimator.ModeKeys.TRAIN:
-                features, labels = self.get_train_inputs()
+            features, labels = self.get_inputs(mode)
 
             predictions = self.get_estimator_spec(
                 features, labels, tf.estimator.ModeKeys.PREDICT).predictions
             saver = tf.train.Saver()
 
+            data_tf = [predictions, features]
+            if mode != tf.estimator.ModeKeys.PREDICT:
+                data_tf.append(labels)
+
             with tf.train.MonitoredSession() as sess:
                 saver.restore(sess, tf.train.latest_checkpoint(self.model_dir))
                 while not sess.should_stop():
-                    data = sess.run([predictions, features, labels])
-                    self.vis_prediction_data(*data)
+                    data = sess.run(data_tf)
+                    for record in nested_generator(data):
+                        self.vis_prediction_data(*record)
 
     def evaluation_report(self, evaluation):
         print(evaluation)

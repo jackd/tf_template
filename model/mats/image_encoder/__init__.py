@@ -18,10 +18,21 @@ def _get_mobilenet_features(image, mode, load_weights, alpha):
 
 
 class ImageEncoderBuilder(builder.ModelBuilder):
+    @staticmethod
+    def from_id(model_id):
+        from tf_template.model import load_params
+        params = load_params(model_id)
+        if params['family'] != 'image_encoder':
+            raise ValueError(
+                'parameters for model %s have family other than '
+                '"image_encoder"')
+        return ImageEncoderBuilder(model_id, params)
 
     @property
     def needs_custom_initialization(self):
         return True
+
+    _encoder_scope = 'image_encoder'
 
     @property
     def batch_size(self):
@@ -46,16 +57,19 @@ class ImageEncoderBuilder(builder.ModelBuilder):
     def get_encoder_builder(self):
         return VoxelAEBuilder.from_id(self.encoder_id)
 
-    def get_inference(self, features, mode):
-        image_features = self.get_image_features(features['image'], mode)
-        x = tf.layers.flatten(image_features)
+    def encode(self, image, mode):
         n_dense = self.params.get('n_dense', [1024])
         embedding_dim = self.get_encoder_builder().embedding_dim
-        with tf.variable_scope('image_encoder'):
+        with tf.variable_scope(ImageEncoderBuilder._encoder_scope):
+            image_features = self.get_image_features(image, mode)
+            x = tf.layers.flatten(image_features)
             for n in n_dense:
                 x = tf.layers.dense(x, n, activation=tf.keras.layers.PReLU())
             x = tf.layers.dense(x, embedding_dim)
-        return dict(example_id=features['example_id'], encoding=x)
+
+    def get_inference(self, features, mode):
+        encoding = self.encode(features['image'], mode)
+        return dict(example_id=features['example_id'], encoding=encoding)
 
     def get_inference_loss(self, inference, labels):
         return tf.nn.l2_loss(inference['encoding'] - labels)
@@ -69,36 +83,43 @@ class ImageEncoderBuilder(builder.ModelBuilder):
         from shapenet.core import cat_desc_to_id
         return cat_desc_to_id(self.params['cat'])
 
+    @property
+    def input_shape(self):
+        return self.params.get('image_shape', (192, 256))
+
+    def get_image_dataset(self):
+        from shapenet.image import with_background
+        from shapenet.core.blender_renderings.config import RenderConfig
+        render_config = RenderConfig(shape=self.input_shape)
+        view_index = self.params.get('view_index', 5)
+        cat_id = self.get_cat_id()
+        image_dataset = render_config.get_dataset(cat_id, view_index)
+        return image_dataset.map(lambda x: with_background(x, 255))
+
+    def preprocess_image(self, image):
+        return tf.image.per_image_standardization(image)
+
     def get_dataset(self, mode, include_labels=True):
         from tf_template.model.mats.ids import get_example_ids
-        from shapenet.core.blender_renderings.config import RenderConfig
         from tf_template.model.mats.embedding import get_embeddings_dataset
-        from shapenet.image import with_background
         cat_id = self.get_cat_id()
         example_ids = get_example_ids(cat_id, mode)
-        shape = self.params.get('image_shape', (192, 256))
+        shape = self.input_shape
 
-        render_config = RenderConfig(shape=shape)
-        view_index = self.params.get('view_index', 5)
-        image_dataset = render_config.get_dataset(cat_id, view_index)
         encoder_id = self.encoder_id
         embedding_dim = self.get_encoder_builder().embedding_dim
 
         image_shape = shape + (3,)
 
+        image_dataset = self.get_image_dataset()
         image_dataset.open()
-
-        def get_image_data(example_id):
-            image = image_dataset[example_id]
-            image = with_background(image, 255)
-            return image
 
         if include_labels:
             embeddings_dataset = get_embeddings_dataset(encoder_id)
             embeddings_dataset.open()
 
             def map_np_fn(example_id):
-                image = get_image_data(example_id)
+                image = image_dataset[example_id]
                 embedding = embeddings_dataset[example_id]
                 return image, embedding
 
@@ -107,16 +128,17 @@ class ImageEncoderBuilder(builder.ModelBuilder):
                     map_np_fn, [example_id], (tf.uint8, tf.float32),
                     stateful=False)
                 image.set_shape(image_shape)
-                image = tf.image.per_image_standardization(image)
+                image = self.preprocess_image(image)
                 embedding.set_shape((embedding_dim,))
                 return dict(example_id=example_id, image=image), embedding
 
         else:
             def map_tf_fn(example_id):
                 image = tf.py_func(
-                    get_image_data, [example_id], tf.uint8, stateful=False)
+                    lambda x: image_dataset[x], [example_id], tf.uint8,
+                    stateful=False)
                 image.set_shape(image_shape)
-                image = tf.image.per_image_standardization(image)
+                image = self.preprocess_image(image)
                 return dict(example_id=example_id, image=image)
 
         return tf.data.Dataset.from_tensor_slices(example_ids).map(map_tf_fn)
@@ -136,18 +158,24 @@ class ImageEncoderBuilder(builder.ModelBuilder):
     def vis_example_data(self, feature_data, label_data):
         import numpy as np
         import matplotlib.pyplot as plt
-        example_ids = feature_data['example_id']
-        images = feature_data['image']
-        for example_id, image in zip(example_ids, images):
-            image -= np.min(image)
-            image /= np.max(image)
-            plt.imshow(image)
-            plt.title(example_id)
-            print(label_data)
-            plt.show()
+        example_id = feature_data['example_id']
+        image = feature_data['image']
+        image -= np.min(image)
+        image /= np.max(image)
+        plt.imshow(image)
+        plt.title(example_id)
+        print(label_data)
+        plt.show()
 
-    def vis_prediction_data(self, prediction_data, feature_data, label_data):
+    def vis_prediction_data(
+            self, prediction_data, feature_data, label_data=None):
         raise NotImplementedError()
+
+    def load_encoder_variables(self, graph, sess):
+        var_list = tf.get_collection(
+            tf.GraphKeys.VARIABLES, scope=ImageEncoderBuilder._encoder_scope)
+        saver = tf.train.Saver(var_list)
+        saver.restore(sess, tf.train.latest_checkpoint(self.model_dir))
 
 
 def register_image_encoder_family():
