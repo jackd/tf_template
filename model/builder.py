@@ -90,7 +90,7 @@ class ModelBuilder(object):
 
     @property
     def initial_run(self):
-        return self._intiial_run
+        return self._initial_run
 
     @property
     def needs_custom_initialization(self):
@@ -112,7 +112,7 @@ class ModelBuilder(object):
         elif len(os.listdir(model_dir)) > 0:
             print('Initialization already complete. Skipping.')
             return
-        self._intiial_run = True
+        self._initial_run = True
         try:
             graph = tf.Graph()
             with graph.as_default():
@@ -126,9 +126,9 @@ class ModelBuilder(object):
                     saver.save(sess, save_path, global_step=0)
 
         except Exception:
-            self._intiial_run = False
+            self._initial_run = False
             raise
-        self._intiial_run = False
+        self._initial_run = False
 
     @property
     def model_id(self):
@@ -323,7 +323,7 @@ class ModelBuilder(object):
             return self.get_train_inputs(**kwargs)
         elif mode == tf.estimator.ModeKeys.EVAL:
             return self.get_eval_inputs(**kwargs)
-        elif mode == tf.esitmator.ModeKeys.INFER:
+        elif mode == tf.estimator.ModeKeys.PREDICT:
             return self.get_predict_inputs(**kwargs)
 
     def get_estimator(self, config=None):

@@ -49,8 +49,8 @@ class FineTuneModelBuilder(builder.ModelBuilder):
     def get_inference_loss(self, inference, labels):
         """Get the loss assocaited with inferences."""
         logits = inference['logits']
-        return tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=logits, labels=labels)
+        return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=logits, labels=labels))
 
     def get_train_op(self, loss, step):
         """

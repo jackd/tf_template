@@ -32,6 +32,9 @@ class ImageEncoderBuilder(builder.ModelBuilder):
     def needs_custom_initialization(self):
         return True
 
+    def load_initial_variables(self, graph, sess):
+        pass
+
     _encoder_scope = 'image_encoder'
 
     @property
@@ -66,6 +69,7 @@ class ImageEncoderBuilder(builder.ModelBuilder):
             for n in n_dense:
                 x = tf.layers.dense(x, n, activation=tf.keras.layers.PReLU())
             x = tf.layers.dense(x, embedding_dim)
+        return x
 
     def get_inference(self, features, mode):
         encoding = self.encode(features['image'], mode)
