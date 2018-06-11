@@ -63,17 +63,13 @@ class Coordinator(object):
             mode, batch_size=self.train_model.batch_size)
 
     def get_estimator(self, config=None):
+        warm_start = self.inference_model.get_warm_start_settings()
         return tf.estimator.Estimator(
-            self.get_estimator_spec, model_dir=self.model_dir, config=config)
+            self.get_estimator_spec, model_dir=self.model_dir, config=config,
+            warm_start_from=warm_start)
 
     def train(self, config=None):
         estimator = self.get_estimator(config=config)
-        if not os.path.isdir(self.model_dir):
-            if self.inference_model.needs_initial_weight_transfer():
-                graph = tf.Graph()
-                with graph.as_default():
-                    features, _ = self.get_inputs(Modes.TRAIN)
-                    self.inference_model.load_initial_weights(features)
 
         return estimator.train(
             lambda: self.get_inputs(Modes.TRAIN),

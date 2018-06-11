@@ -13,8 +13,5 @@ class InferenceModel(object):
     def prediction_vis(self, prediction_data):
         raise NotImplementedError('Abstract method')
 
-    def needs_initial_weight_transfer(self):
-        return False
-
-    def load_initial_weights(self, features):
-        pass
+    def get_warm_start_settings(self):
+        return None
