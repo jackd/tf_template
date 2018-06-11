@@ -50,8 +50,9 @@ To run your own model, just create a new `.json` file in `tf_template/example/mn
 1. Copy the `new_project` subdirectory and rename all references to `new_project` to `my_fancy_project` and `NewProject` to `MyFancyProject`.
 ```
 cd tf_template
-cp -r project ../my_fancy_project
-sed -i 's/NewProject/MyFancyProject/g' *
-sed -i 's/new_project/my_fancy_project/g' *
+cp -r new_project ../my_fancy_project
+cd ../my_fancy_project
+sed -i 's/NewProject/MyFancyProject/g' **/*.py
+sed -i 's/new_project/my_fancy_project/g' **/*.py
 ```
 2. Find all `TODO` strings and get to work!
