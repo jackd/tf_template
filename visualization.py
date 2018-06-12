@@ -38,8 +38,11 @@ class CompoundVis(Visualization):
 
 class ImageVis(Visualization):
     def __init__(self, image):
+        import numpy as np
         import matplotlib.pyplot as plt
         self._fig, self._ax = plt.subplots(1, 1)
+        if len(image.shape) == 3 and image.shape[-1] == 1:
+            image = np.squeeze(image, axis=-1)
         self._ax.imshow(image)
 
     def show(self, block=False):
