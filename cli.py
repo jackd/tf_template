@@ -75,6 +75,12 @@ _coord_fns = {
 _coord_fns['eval'] = _coord_fns['evaluate']
 
 
+def register_coord_fn(action, fn):
+    if action in _coord_fns:
+        raise KeyError('Action already exists for key "%s"' % action)
+    _coord_fns[action] = fn
+
+
 def coord_main(coord):
     action = FLAGS.action
     return _coord_fns[action](coord)
