@@ -9,21 +9,17 @@ from .modes import Modes
 
 class Coordinator(object):
     def __init__(
-            self, data_source, inference_model, eval_model, train_model,
-            model_dir):
+            self, data_source, inference_model, train_model, model_dir,
+            eval_metric_ops_fn=None):
         self._inference_model = inference_model
-        self._eval_model = eval_model
         self._data_source = data_source
         self._train_model = train_model
         self._model_dir = model_dir
+        self._eval_metric_ops_fn = eval_metric_ops_fn
 
     @property
     def inference_model(self):
         return self._inference_model
-
-    @property
-    def eval_model(self):
-        return self._eval_model
 
     @property
     def train_model(self):
@@ -48,11 +44,12 @@ class Coordinator(object):
         if mode == Modes.PREDICT:
             return tf.estimator.EstimatorSpec(**kwargs)
 
-        loss = self.eval_model.get_total_loss(inference, labels)
-        eval_metric_ops = self.eval_model.get_eval_metric_ops(
-            predictions, labels)
+        loss = self.train_model.get_total_loss(inference, labels)
+        if self._eval_metric_ops_fn is not None:
+            kwargs['eval_metric_ops'] = self._eval_metric_ops_fn(
+                predictions, labels)
+
         kwargs['loss'] = loss
-        kwargs['eval_metric_ops'] = eval_metric_ops
         if mode == Modes.EVAL:
             return tf.estimator.EstimatorSpec(**kwargs)
         kwargs['train_op'] = self.train_model.get_train_op(loss)

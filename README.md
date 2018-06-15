@@ -20,8 +20,7 @@ git clone https://github.com/jackd/tf_toolbox.git
 We define 4 helper classes to encourage modularity:
 * [DataSource](./data_source.py): for creating data pipelines and visualizing, independently of trained models.
 * [InferenceModel]('./inference_model.py'): for creating trainable component of a model, e.g. `features -> logits` for classification.
-* [EvalModel]('./eval_model.py'): for evaluating a trained model, and calculating the inference loss.
-* [TrainModel]('./train_model.py'): for specifying the optimization strategy, `batch_size` and `max_steps`.
+* [TrainModel]('./train_model.py'): for specifying the loss, optimization strategy, `batch_size` and `max_steps`.
 
 As the name suggests, the [Coordinator]('./coordinator.py') is for coordinating all of the above. [cli.py](./cli.py) provides some command line interface helpers using `absl.flags`.
 

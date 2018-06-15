@@ -4,7 +4,8 @@ from __future__ import print_function
 
 import os
 import json
-from tf_template import Coordinator, EvalModel, TrainModel
+from tf_template import Coordinator
+from tf_template import TrainModel
 from tf_template.deserialize import deserialize_optimization_op_fn
 
 _root_dir = os.path.realpath(os.path.dirname(__file__))
@@ -47,9 +48,10 @@ def get_mnist_coordinator(model_id):
     optimizer_kwargs = train_model_params.get(
         'optimizer', {'key': 'adam', 'learning_rate': 1e-3})
 
-    eval_model = EvalModel(inference_loss, get_eval_metric_ops)
-    train_model = TrainModel(deserialize_optimization_op_fn(
-        **optimizer_kwargs), batch_size, max_steps)
+    train_model = TrainModel.from_fns(
+        inference_loss, deserialize_optimization_op_fn(
+            **optimizer_kwargs), batch_size, max_steps)
 
     return Coordinator(
-        data_source, inference_model, eval_model, train_model, model_dir)
+        data_source, inference_model, train_model, model_dir,
+        get_eval_metric_ops)
