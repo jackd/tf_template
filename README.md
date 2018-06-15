@@ -33,7 +33,7 @@ cd tf_template/example/mnist/script
 ./main.py --action=profile
 ./main.py --action=train
 ./main.py --action=vis_predictions
-./main.py --action=evlauate
+./main.py --action=evaluate
 tensorboard --logdir=../_models
 ```
 
