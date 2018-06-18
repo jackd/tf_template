@@ -26,6 +26,13 @@ flags.DEFINE_integer(
     'n_runs', default=10, help='number of runs for tests/profiling')
 
 flags.DEFINE_string('mode', default='train', help='train/eval/infer')
+flags.DEFINE_integer(
+    'n_eval_steps', default=None, help='number of steps used for evaluation')
+
+
+def evaluate(coord):
+    return coord.evaluate(
+        config=get_estimator_config(), steps=FLAGS.n_eval_steps)
 
 
 def get_session_config():
@@ -63,7 +70,7 @@ def report_train_tests(coord):
 _coord_fns = {
     'vis_inputs': lambda coord: vis_inputs(coord.data_source),
     'train': lambda coord: coord.train(config=get_estimator_config()),
-    'evaluate': lambda coord: coord.evaluate(config=get_estimator_config()),
+    'evaluate': evaluate,
     'vis_predictions': lambda coord: coord.vis_predictions(
         config=get_session_config()),
     'profile': lambda coord: coord.create_profile(
