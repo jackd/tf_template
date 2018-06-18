@@ -27,7 +27,7 @@ As the name suggests, the [Coordinator]('./coordinator.py') is for coordinating 
 ## Example
 See the [MNIST example](./example/mnist) for a full working example.
 ```
-cd tf_template/example/mnist/script
+cd tf_template/example/mnist/scripts
 ./main.py --action=vis_inputs  # or ./vis_inputs.py
 ./main.py --action=test
 ./main.py --action=profile

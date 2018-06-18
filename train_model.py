@@ -33,6 +33,7 @@ class TrainModel(object):
         else:
             if inference_loss not in losses:
                 losses.append(inference_loss)
+            tf.summary.scalar('inference_loss', inference_loss)
             return tf.add_n(losses)
 
     def get_optimization_op(self, loss, global_step):
