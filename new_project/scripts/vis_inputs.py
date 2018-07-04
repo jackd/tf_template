@@ -8,15 +8,15 @@ from tf_template.cli import vis_inputs
 FLAGS = flags.FLAGS
 
 # TODO
-flags.DEFINE_float(
-    'some_float', default=None,
-    help='stddev or corruption applied to inputs')
+flags.DEFINE_string(
+    'cat_id', default=None,
+    help='categroy id')
 
 
 def main(_):
     from new_project.data_source import get_data_source
     # TODO
-    data_source = get_data_source(some_float=FLAGS.some_float)
+    data_source = get_data_source(some_float=FLAGS.cat_id)
     vis_inputs(data_source)
 
 

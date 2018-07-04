@@ -54,6 +54,16 @@ class ImageVis(Visualization):
         plt.close()
 
 
+class MultiImageVis(ImageVis):
+    def __init__(self, images, *grid_shape):
+        import numpy as np
+        import matplotlib.pyplot as plt
+        assert(np.prod(grid_shape) == len(images))
+        self._fig, self._ax = plt.subplots(*grid_shape)
+        for ax, image in zip(self._ax.flatten(), images):
+            ax.imshow(image)
+
+
 class PrintVis(Visualization):
     def __init__(self, data):
         self._data = data
