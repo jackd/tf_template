@@ -37,13 +37,13 @@ class CompoundVis(Visualization):
 
 
 class ImageVis(Visualization):
-    def __init__(self, image):
+    def __init__(self, image, **imshow_kwargs):
         import numpy as np
         import matplotlib.pyplot as plt
         self._fig, self._ax = plt.subplots(1, 1)
         if len(image.shape) == 3 and image.shape[-1] == 1:
             image = np.squeeze(image, axis=-1)
-        self._ax.imshow(image)
+        self._ax.imshow(image, **imshow_kwargs)
 
     def show(self, block=False):
         import matplotlib.pyplot as plt
@@ -55,13 +55,13 @@ class ImageVis(Visualization):
 
 
 class MultiImageVis(ImageVis):
-    def __init__(self, images, *grid_shape):
+    def __init__(self, images, *grid_shape, **imshow_kwargs):
         import numpy as np
         import matplotlib.pyplot as plt
         assert(np.prod(grid_shape) == len(images))
         self._fig, self._ax = plt.subplots(*grid_shape)
         for ax, image in zip(self._ax.flatten(), images):
-            ax.imshow(image)
+            ax.imshow(image, **imshow_kwargs)
 
 
 class PrintVis(Visualization):
