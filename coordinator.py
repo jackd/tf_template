@@ -10,12 +10,14 @@ from .modes import Modes
 class Coordinator(object):
     def __init__(
             self, data_source, inference_model, train_model, model_dir,
-            eval_metric_ops_fn=None):
+            eval_metric_ops_fn=None, misc_fn=None, misc_vis_fn=None):
         self._inference_model = inference_model
         self._data_source = data_source
         self._train_model = train_model
         self._model_dir = model_dir
         self._eval_metric_ops_fn = eval_metric_ops_fn
+        self._misc_fn = misc_fn
+        self._misc_vis_fn = misc_vis_fn
 
     @property
     def inference_model(self):
@@ -93,12 +95,17 @@ class Coordinator(object):
             spec = self.get_estimator_spec(
                 features, labels, mode=Modes.PREDICT)
             predictions = spec.predictions
+            if self._misc_fn is not None:
+                misc = self._misc_fn(spec, labels)
+            else:
+                misc = None
 
             session_creator = tf.train.ChiefSessionCreator(config=config)
-            if labels is None:
-                tensors = features, predictions
-            else:
-                tensors = features, labels, predictions
+            tensors = dict(features=features, predictions=predictions)
+            if labels is not None:
+                tensors['labels'] = labels
+            if misc is not None:
+                tensors['misc'] = misc
             saver = tf.train.Saver()
 
             with tf.train.MonitoredSession(
@@ -110,16 +117,16 @@ class Coordinator(object):
                     flat_data = nest.flatten(data)
                     for record in zip(*flat_data):
                         record = nest.pack_sequence_as(tensors, record)
-                        if labels is None:
-                            fd, pred = record
-                            lab = None
-                        else:
-                            fd, lab, pred = record
                         vis = []
-                        vis.append(self.data_source.feature_vis(fd))
-                        vis.append(self.inference_model.prediction_vis(pred))
-                        if lab is not None:
-                            vis.append(self.data_source.label_vis(lab))
+                        vis.append(self.data_source.feature_vis(
+                            record['features']))
+                        vis.append(self.inference_model.prediction_vis(
+                            record['predictions']))
+                        if labels is not None:
+                            vis.append(self.data_source.label_vis(
+                                record['labels']))
+                        if self._misc_vis_fn is not None:
+                            vis.append(self._misc_vis_fn(record['misc']))
                         vis = get_vis(*vis)
                         vis.show(block=False)
                         maybe_stop()
