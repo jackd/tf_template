@@ -64,7 +64,7 @@ def report_train_tests(coord):
         variable_change_test=FLAGS.test_variables_changed,
         update_ops_test=FLAGS.test_update_ops,
         config=get_session_config(),
-        n_steps=FLAGS.n_runs)
+        steps=FLAGS.n_runs)
 
 
 _coord_fns = {
