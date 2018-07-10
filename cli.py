@@ -7,7 +7,7 @@ from absl import flags
 FLAGS = flags.FLAGS
 
 
-flags.DEFINE_string(
+flags.DEFINE_float(
     'memory_frac', default=None, help='gpu memory fraction')
 flags.DEFINE_string(
     'allow_growth', default=None, help='allow gpu memory growth')
