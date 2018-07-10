@@ -52,7 +52,7 @@ def get_session_config():
 
 def get_estimator_config():
     import tensorflow as tf
-    return tf.estimator.RunConfig(get_session_config())
+    return tf.estimator.RunConfig(session_config=get_session_config())
 
 
 def vis_inputs(data_source):
