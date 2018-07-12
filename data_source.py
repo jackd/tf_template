@@ -18,20 +18,25 @@ class DataSource(object):
     def label_vis(self, label):
         raise NotImplementedError('Abstract method')
 
+    def vis_input_data(self, features, labels=None):
+        vis = self.feature_vis(features)
+        if labels is not None:
+            vis = get_vis(vis, self.label_vis(labels))
+        vis.show(block=False)
+        maybe_stop()
+        vis.close()
+
     def vis_inputs(self, mode=Modes.TRAIN, config=None):
         graph = tf.Graph()
         with graph.as_default():
             features, labels = self.get_inputs(mode, batch_size=None)
+            tensors = dict(features=features)
+            if labels is not None:
+                tensors['labels'] = labels
 
             session_creator = tf.train.ChiefSessionCreator(config=config)
             with tf.train.MonitoredSession(
                     session_creator=session_creator) as sess:
                 while not sess.should_stop():
-                    if labels is None:
-                        vis = self.feature_vis(sess.run(features))
-                    else:
-                        fd, ld = sess.run((features, labels))
-                        vis = get_vis(self.feature_vis(fd), self.label_vis(ld))
-                    vis.show(block=False)
-                    maybe_stop()
-                    vis.close()
+                    record = sess.run(tensors)
+                    self.vis_input_data(**record)

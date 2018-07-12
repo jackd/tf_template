@@ -86,8 +86,6 @@ class Coordinator(object):
             **predict_kwargs)
 
     def vis_predictions(self, config=None, **predict_kwargs):
-        from .util import maybe_stop
-        from .visualization import get_vis
         nest = tf.contrib.framework.nest
         graph = tf.Graph()
         with graph.as_default():
@@ -117,20 +115,23 @@ class Coordinator(object):
                     flat_data = nest.flatten(data)
                     for record in zip(*flat_data):
                         record = nest.pack_sequence_as(tensors, record)
-                        vis = []
-                        vis.append(self.data_source.feature_vis(
-                            record['features']))
-                        vis.append(self.inference_model.prediction_vis(
-                            record['predictions']))
-                        if labels is not None:
-                            vis.append(self.data_source.label_vis(
-                                record['labels']))
-                        if self._misc_vis_fn is not None:
-                            vis.append(self._misc_vis_fn(record['misc']))
-                        vis = get_vis(*vis)
-                        vis.show(block=False)
-                        maybe_stop()
-                        vis.close()
+                        self.vis_prediction_data(**record)
+
+    def vis_prediction_data(
+            self, features, predictions, labels=None, misc=None):
+        from .util import maybe_stop
+        from .visualization import get_vis
+        vis = []
+        vis.append(self.data_source.feature_vis(features))
+        vis.append(self.inference_model.prediction_vis(predictions))
+        if labels is not None:
+            vis.append(self.data_source.label_vis(labels))
+        if self._misc_vis_fn is not None:
+            vis.append(self._misc_vis_fn(misc))
+        vis = get_vis(*vis)
+        vis.show(block=False)
+        maybe_stop()
+        vis.close()
 
     def create_profile(
             self, data_mode=Modes.TRAIN, inference_mode=Modes.TRAIN,
