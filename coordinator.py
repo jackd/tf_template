@@ -57,9 +57,11 @@ class Coordinator(object):
         kwargs['train_op'] = self.train_model.get_train_op(loss)
         return tf.estimator.EstimatorSpec(**kwargs)
 
-    def get_inputs(self, mode):
+    def get_inputs(self, mode, **input_kwargs):
+        if 'batch_size' not in input_kwargs:
+            input_kwargs['batch_size'] = self.train_model.batch_size
         return self.data_source.get_inputs(
-            mode, batch_size=self.train_model.batch_size)
+            mode, **input_kwargs)
 
     def get_estimator(self, config=None):
         warm_start = self.inference_model.get_warm_start_settings()
@@ -79,10 +81,10 @@ class Coordinator(object):
         return estimator.evaluate(
             lambda: self.get_inputs(Modes.EVAL), **eval_kwargs)
 
-    def predict(self, config=None, **predict_kwargs):
+    def predict(self, config=None, input_kwargs={}, **predict_kwargs):
         estimator = self.get_estimator(config=config)
         return estimator.predict(
-            lambda: self.get_inputs(Modes.PREDICT),
+            lambda: self.get_inputs(Modes.PREDICT, **input_kwargs),
             **predict_kwargs)
 
     def vis_predictions(self, config=None, **predict_kwargs):
