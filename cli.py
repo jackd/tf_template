@@ -29,10 +29,60 @@ flags.DEFINE_string('mode', default='train', help='train/eval/infer')
 flags.DEFINE_integer(
     'n_eval_steps', default=None, help='number of steps used for evaluation')
 
+flags.DEFINE_string(
+    'period', default=None, help='time per repeat hh:mm:ss')
+flags.DEFINE_string(
+    'delay', default='00:00:00', help='time before first repeat, hh:mm:ss')
+
+
+def parse_time(time_string):
+    import re
+    regex = r'(?:(\d\d):)?(?:(\d\d):)?(\d\d)'
+    prog = re.compile(regex)
+
+    if time_string is None:
+        raise ValueError('period must not be None')
+
+    result = prog.match(time_string)
+
+    if result.group(0) != time_string:
+        raise ValueError('Invalid time "%s"' % time_string)
+    groups = (result.group(i) for i in range(1, 4))
+    groups = [int(g) for g in groups if g is not None][-1::-1]
+    dt = 1
+    period = 0
+    assert(len(g) < 4)
+    for g in groups:
+        g += period * dt
+        dt *= 60
+    return g
+
+
+def get_period():
+    return parse_time(FLAGS.period)
+
+
+def get_delay():
+    return parse_time(FLAGS.delay)
+
 
 def evaluate(coord):
     return coord.evaluate(
         config=get_estimator_config(), steps=FLAGS.n_eval_steps)
+
+
+def periodic_evaluate(coord):
+    import time
+    period = get_period()
+    delay = get_delay()
+    if delay > 0:
+        time.sleep(delay)
+    while True:
+        t = time.time()
+        evaluate(coord)
+        remaining = period - (time.time() - t)
+        if remaining > 0:
+            time.sleep(remaining)
 
 
 def get_session_config():
@@ -76,7 +126,8 @@ _coord_fns = {
     'profile': lambda coord: coord.create_profile(
         config=get_session_config(), skip_runs=FLAGS.n_runs),
     'test': lambda coord: report_train_tests(coord),
-    'clean': lambda coord: coord.clean(confirm=not FLAGS.force_confirm)
+    'clean': lambda coord: coord.clean(confirm=not FLAGS.force_confirm),
+    'periodic_evaluate': periodic_evaluate,
 }
 
 _coord_fns['eval'] = _coord_fns['evaluate']
