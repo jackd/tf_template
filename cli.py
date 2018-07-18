@@ -30,9 +30,9 @@ flags.DEFINE_integer(
     'n_eval_steps', default=None, help='number of steps used for evaluation')
 
 flags.DEFINE_string(
-    'period', default=None, help='time per repeat hh:mm:ss')
+    'period', default='00:10:00', help='time per repeat hh:mm:ss')
 flags.DEFINE_string(
-    'delay', default='00:00:00', help='time before first repeat, hh:mm:ss')
+    'delay', default='00:01:00', help='time before first repeat, hh:mm:ss')
 
 
 def parse_time(time_string):
@@ -122,9 +122,38 @@ def report_train_tests(coord):
         steps=FLAGS.n_runs)
 
 
+def train(coord):
+    return coord.train(config=get_estimator_config()),
+
+
+def train_and_eval(coord):
+    import multiprocessing
+    memory_frac = FLAGS.memory_frac
+    if memory_frac is None:
+        raise ValueError('memory_frac must be provided for train_and_eval')
+    elif memory_frac > 0.5:
+        raise ValueError('memory_frac cannot be greater than 0.5')
+
+    def eval_fn():
+        return periodic_evaluate(coord)
+
+    eval_process = multiprocessing.Process(target=eval_fn)
+    eval_process.start()
+    try:
+        train(coord)
+    except Exception:
+        eval_process.terminate()
+        raise
+    except KeyboardInterrupt:
+        eval_process.terminate()
+        raise
+    if eval_process.is_alive():
+        eval_process.terminate()
+
+
 _coord_fns = {
     'vis_inputs': lambda coord: vis_inputs(coord.data_source),
-    'train': lambda coord: coord.train(config=get_estimator_config()),
+    'train': train,
     'evaluate': evaluate,
     'vis_predictions': lambda coord: coord.vis_predictions(
         config=get_session_config()),
@@ -133,6 +162,7 @@ _coord_fns = {
     'test': lambda coord: report_train_tests(coord),
     'clean': lambda coord: coord.clean(confirm=not FLAGS.force_confirm),
     'periodic_evaluate': periodic_evaluate,
+    'train_and_eval': train_and_eval,
 }
 
 _coord_fns['eval'] = _coord_fns['evaluate']
