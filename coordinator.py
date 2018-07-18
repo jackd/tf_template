@@ -76,10 +76,10 @@ class Coordinator(object):
             lambda: self.get_inputs(Modes.TRAIN),
             max_steps=self.train_model.max_steps)
 
-    def evaluate(self, config=None, **eval_kwargs):
+    def evaluate(self, config=None, input_kwargs={}, **eval_kwargs):
         estimator = self.get_estimator(config=config)
         return estimator.evaluate(
-            lambda: self.get_inputs(Modes.EVAL), **eval_kwargs)
+            lambda: self.get_inputs(Modes.EVAL, **input_kwargs), **eval_kwargs)
 
     def predict(self, config=None, input_kwargs={}, **predict_kwargs):
         estimator = self.get_estimator(config=config)
