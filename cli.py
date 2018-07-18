@@ -53,9 +53,9 @@ def parse_time(time_string):
     period = 0
     assert(len(g) < 4)
     for g in groups:
-        g += period * dt
+        period += g*dt
         dt *= 60
-    return g
+    return period
 
 
 def get_period():
@@ -75,13 +75,18 @@ def periodic_evaluate(coord):
     import time
     period = get_period()
     delay = get_delay()
+    print('Running evaluate periodically')
+    print('delay: %ds' % delay)
+    print('period: %ds' % period)
     if delay > 0:
         time.sleep(delay)
     while True:
         t = time.time()
+        print('Evaluating...')
         evaluate(coord)
         remaining = period - (time.time() - t)
         if remaining > 0:
+            print('Sleeping for %ss...' % remaining)
             time.sleep(remaining)
 
 
@@ -131,6 +136,7 @@ _coord_fns = {
 }
 
 _coord_fns['eval'] = _coord_fns['evaluate']
+_coord_fns['periodic_eval'] = _coord_fns['periodic_evaluate']
 
 
 def register_coord_fn(action, fn):
