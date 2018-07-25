@@ -149,6 +149,7 @@ def train_and_eval(coord):
         raise
     if eval_process.is_alive():
         eval_process.terminate()
+    evaluate(coord)
 
 
 _coord_fns = {
