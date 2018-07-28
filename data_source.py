@@ -18,10 +18,14 @@ class DataSource(object):
     def label_vis(self, label):
         raise NotImplementedError('Abstract method')
 
-    def vis_input_data(self, features, labels=None):
+    def input_vis(self, features, labels=None):
         vis = self.feature_vis(features)
         if labels is not None:
             vis = get_vis(vis, self.label_vis(labels))
+        return vis
+
+    def vis_input_data(self, features, labels=None):
+        vis = self.input_vis(features, labels)
         vis.show(block=False)
         maybe_stop()
         vis.close()
