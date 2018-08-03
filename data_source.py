@@ -8,9 +8,46 @@ from .modes import Modes
 from .util import maybe_stop
 
 
+def get_dummy_input(spec):
+    dtype = spec.dtype
+    return tf.random_uniform(
+        shape=spec.shape, minval=dtype.min, maxval=dtype.max, dtype=dtype)
+
+
+def get_dummy_inputs(*specs):
+    nest = tf.contrib.framework.nest
+    return nest.map_structure(get_dummy_input, *specs)
+
+
 class DataSource(object):
     def get_inputs(self, mode, batch_size=None):
         raise NotImplementedError('Abstract method')
+
+    def get_input_spec(self, mode, batch_size=None):
+        """
+        Get a (possibly nested) `tf.layers.InputSpec` this source produces.
+
+        If `batch_size` is `None`, the returned structure will be associated
+        with no batching.
+
+        Args:
+            `mode`: one of `tf.estimator.ModeKeys`
+            `batch_size`: size of the batch, or None if no batching is to be
+                applied.
+        Returns:
+            (feature_spec, label_spec) tuple, where each is either a possible-
+                nested `tf.layers.InputSpec` or `None`.
+        """
+        raise NotImplementedError('Abstract method')
+
+    def get_dummy_inputs(self, mode, batch_size=None):
+        """
+        Get random inputs with the same shape/dtype/structure as inputs.
+
+        Useful for profiling, as it can show whether or not a choke-point is
+        occuring in the DataSource.
+        """
+        return get_dummy_inputs(*self.get_input_spec(mode, batch_size))
 
     def feature_vis(self, features):
         raise NotImplementedError('Abstract method')
@@ -21,11 +58,11 @@ class DataSource(object):
     def input_vis(self, features, labels=None):
         vis = self.feature_vis(features)
         if labels is not None:
-            vis = get_vis(vis, self.label_vis(labels))
+            vis = (vis, self.label_vis(labels))
         return vis
 
     def vis_input_data(self, features, labels=None):
-        vis = self.input_vis(features, labels)
+        vis = get_vis(self.input_vis(features, labels))
         vis.show(block=False)
         maybe_stop()
         vis.close()

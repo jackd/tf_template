@@ -21,6 +21,8 @@ flags.DEFINE_bool(
     help='test if variables are changed during training')
 flags.DEFINE_bool(
     'test_update_ops', default=True, help='test if update_ops are run')
+flags.DEFINE_bool(
+    'use_dummy_inputs', default=False, help='use dummy inputs for profiling')
 
 flags.DEFINE_integer(
     'n_runs', default=10, help='number of runs for tests/profiling')
@@ -159,7 +161,8 @@ _coord_fns = {
     'vis_predictions': lambda coord: coord.vis_predictions(
         config=get_session_config()),
     'profile': lambda coord: coord.create_profile(
-        config=get_session_config(), skip_runs=FLAGS.n_runs),
+        config=get_session_config(), skip_runs=FLAGS.n_runs,
+        use_dummy_inputs=FLAGS.use_dummy_inputs),
     'test': lambda coord: report_train_tests(coord),
     'clean': lambda coord: coord.clean(confirm=not FLAGS.force_confirm),
     'periodic_evaluate': periodic_evaluate,

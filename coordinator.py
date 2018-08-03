@@ -137,20 +137,33 @@ class Coordinator(object):
 
     def create_profile(
             self, data_mode=Modes.TRAIN, inference_mode=Modes.TRAIN,
-            batch_size=None, path=None, skip_runs=10, config=None):
+            batch_size=None, path=None, skip_runs=10, use_dummy_inputs=False,
+            config=None):
         import os
         from tf_toolbox.profile import create_profile
         if batch_size is None:
             batch_size = self.train_model.batch_size
 
         def graph_fn():
+            if use_dummy_inputs:
+                features, labels = self.data_source.get_dummy_inputs(
+                    data_mode, batch_size)
             features, labels = self.data_source.get_inputs(
                 data_mode, batch_size)
             spec = self.get_estimator_spec(features, labels, inference_mode)
-            return spec.train_op
+            if inference_mode == tf.esitmator.ModeKeys.PREDICT:
+                return spec.predictions
+            elif inference_mode == tf.estimator.ModeKeys.EVAL:
+                return spec.eval_metric_ops
+            elif inference_mode == tf.estimator.ModeKeys.TRAIN:
+                return spec.train_op
+            else:
+                raise ValueError(
+                    'Invalid inference_mode "%s"' % inference_mode)
 
         if path is None:
-            path = os.path.join(self.model_dir, 'profile.json')
+            fn = 'profile_dummy.json' if use_dummy_inputs else 'profile.json'
+            path = os.path.join(self.model_dir, fn)
 
         create_profile(graph_fn, path, skip_runs=skip_runs, config=config)
 
