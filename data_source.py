@@ -16,7 +16,7 @@ def get_dummy_input(spec):
 
 def get_dummy_inputs(*specs):
     nest = tf.contrib.framework.nest
-    return nest.map_structure(get_dummy_input, *specs)
+    return nest.map_structure(get_dummy_input, specs)
 
 
 class DataSource(object):
