@@ -152,7 +152,7 @@ class Coordinator(object):
                 features, labels = self.data_source.get_inputs(
                     data_mode, batch_size)
             spec = self.get_estimator_spec(features, labels, inference_mode)
-            if inference_mode == tf.esitmator.ModeKeys.PREDICT:
+            if inference_mode == tf.estimator.ModeKeys.PREDICT:
                 return spec.predictions
             elif inference_mode == tf.estimator.ModeKeys.EVAL:
                 return spec.eval_metric_ops
