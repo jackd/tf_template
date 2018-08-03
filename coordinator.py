@@ -148,8 +148,9 @@ class Coordinator(object):
             if use_dummy_inputs:
                 features, labels = self.data_source.get_dummy_inputs(
                     data_mode, batch_size)
-            features, labels = self.data_source.get_inputs(
-                data_mode, batch_size)
+            else:
+                features, labels = self.data_source.get_inputs(
+                    data_mode, batch_size)
             spec = self.get_estimator_spec(features, labels, inference_mode)
             if inference_mode == tf.esitmator.ModeKeys.PREDICT:
                 return spec.predictions
