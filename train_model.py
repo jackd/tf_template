@@ -46,14 +46,6 @@ class TrainModel(object):
         if len(update_ops) == 0:
             return opt_op
         else:
-            # val = tf.get_default_graph().get_tensor_by_name(
-            #     'MobilenetV2/Conv_1/BatchNorm/moving_variance:0')
-            # update_ops.append(tf.Print(val, [val]))
-            # vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
-            # for var in vars:
-            #     if 'BatchNorm' in var.name and 'Adam' not in var.name:
-            #         print(var.name)
-            # exit()
             if opt_op not in update_ops:
                 update_ops.append(opt_op)
             return tf.group(*update_ops)
