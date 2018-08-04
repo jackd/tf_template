@@ -30,10 +30,11 @@ class DataSource(object):
         maybe_stop()
         vis.close()
 
-    def vis_inputs(self, mode=Modes.TRAIN, config=None):
+    def vis_inputs(self, mode=Modes.TRAIN, config=None, batch_size=None):
+        nest = tf.contrib.framework.nest
         graph = tf.Graph()
         with graph.as_default():
-            features, labels = self.get_inputs(mode, batch_size=None)
+            features, labels = self.get_inputs(mode, batch_size=batch_size)
             tensors = dict(features=features)
             if labels is not None:
                 tensors['labels'] = labels
@@ -43,4 +44,9 @@ class DataSource(object):
                     session_creator=session_creator) as sess:
                 while not sess.should_stop():
                     record = sess.run(tensors)
-                    self.vis_input_data(**record)
+                    if batch_size is None:
+                        self.vis_input_data(**record)
+                    else:
+                        for ri in zip(*nest.flatten(record)):
+                            self.vis_input_data(
+                                **(nest.pack_sequence_as(tensors, ri)))

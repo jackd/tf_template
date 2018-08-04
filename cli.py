@@ -27,6 +27,8 @@ flags.DEFINE_integer(
 
 flags.DEFINE_string('mode', default='train', help='train/eval/infer')
 flags.DEFINE_integer(
+    'batch_size', default=None, help='batch size for vis_inputs')
+flags.DEFINE_integer(
     'n_eval_steps', default=None, help='number of steps used for evaluation')
 
 flags.DEFINE_string(
@@ -111,7 +113,9 @@ def get_estimator_config():
 
 
 def vis_inputs(data_source):
-    return data_source.vis_inputs(config=get_session_config(), mode=FLAGS.mode)
+    return data_source.vis_inputs(
+        config=get_session_config(), mode=FLAGS.mode,
+        batch_size=FLAGS.batch_size)
 
 
 def report_train_tests(coord):
@@ -157,7 +161,7 @@ _coord_fns = {
     'train': train,
     'evaluate': evaluate,
     'vis_predictions': lambda coord: coord.vis_predictions(
-        config=get_session_config()),
+        config=get_session_config(), data_mode=FLAGS.mode),
     'profile': lambda coord: coord.create_profile(
         config=get_session_config(), skip_runs=FLAGS.n_runs),
     'test': lambda coord: report_train_tests(coord),

@@ -64,7 +64,10 @@ class Coordinator(object):
             mode, **input_kwargs)
 
     def get_estimator(self, config=None):
-        warm_start = self.inference_model.get_warm_start_settings()
+        if tf.train.latest_checkpoint(self.model_dir) is None:
+            warm_start = self.inference_model.get_warm_start_settings()
+        else:
+            warm_start = None
         return tf.estimator.Estimator(
             self.get_estimator_spec, model_dir=self.model_dir, config=config,
             warm_start_from=warm_start)
@@ -87,11 +90,12 @@ class Coordinator(object):
             lambda: self.get_inputs(Modes.PREDICT, **input_kwargs),
             **predict_kwargs)
 
-    def vis_predictions(self, config=None, **predict_kwargs):
+    def vis_predictions(
+            self, config=None, data_mode=Modes.PREDICT, **predict_kwargs):
         nest = tf.contrib.framework.nest
         graph = tf.Graph()
         with graph.as_default():
-            features, labels = self.get_inputs(mode=Modes.PREDICT)
+            features, labels = self.get_inputs(mode=data_mode)
             spec = self.get_estimator_spec(
                 features, labels, mode=Modes.PREDICT)
             predictions = spec.predictions
@@ -194,3 +198,52 @@ class Coordinator(object):
             else:
                 raise ValueError('Invalid input "%s"' % inp)
         self._clean()
+
+    def init_variables(self):
+        """
+        Initializes variables from `inference_model get_warm_start_settings`.
+
+        Also initializes all other variables. While this should be
+        unneccessary, some issues exist with `slim.layers.batch_norm` and
+        checkpoints provided by `models.research.slim.nets` - maybe because
+        the checkpoints don't contain the running averages?
+        """
+        mode = 'train'
+        ws = self.inference_model.get_warm_start_settings()
+        model_dir = self.model_dir
+        if not os.path.isdir(model_dir):
+            os.makedirs(model_dir)
+        elif len(os.listdir(model_dir)) > 0:
+            # print('model_dir "%s" not empty' % model_dir)
+            return
+
+        if ws is None:
+            # print('warm_start_settings is None')
+            return
+
+        print('Initializing variables...')
+
+        ckpt = ws.ckpt_to_initialize_from
+        vars_to_warm_start = ws.vars_to_warm_start
+        graph = tf.Graph()
+        with graph.as_default():
+            features, labels = self.data_source.get_inputs(
+                mode=mode, batch_size=self.train_model.batch_size)
+            self.get_estimator_spec(features, labels, mode)
+
+            def is_match(name):
+                import re
+                return re.match(vars_to_warm_start, name) is not None
+
+            var_list = [v for v in tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES) if is_match(v.name)]
+
+        with tf.Session(graph=graph) as sess:
+            sess.run(tf.global_variables_initializer())
+
+            loader = tf.train.Saver(var_list=var_list)
+            loader.restore(sess, ckpt)
+
+            saver = tf.train.Saver()
+            saver.save(
+                sess, os.path.join(model_dir, 'model'), global_step=0)
