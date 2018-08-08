@@ -92,6 +92,8 @@ class Coordinator(object):
 
     def vis_predictions(
             self, config=None, data_mode=Modes.PREDICT, **predict_kwargs):
+        if data_mode is None:
+            data_mode = Modes.PREDICT
         nest = tf.contrib.framework.nest
         graph = tf.Graph()
         with graph.as_default():

@@ -27,7 +27,7 @@ flags.DEFINE_bool(
 flags.DEFINE_integer(
     'n_runs', default=10, help='number of runs for tests/profiling')
 
-flags.DEFINE_string('mode', default='train', help='train/eval/infer')
+flags.DEFINE_string('mode', default=None, help='train/eval/infer')
 flags.DEFINE_integer(
     'batch_size', default=None, help='batch size for vis_inputs')
 flags.DEFINE_integer(
@@ -115,9 +115,11 @@ def get_estimator_config():
 
 
 def vis_inputs(data_source):
-    return data_source.vis_inputs(
-        config=get_session_config(), mode=FLAGS.mode,
-        batch_size=FLAGS.batch_size)
+    kwargs = dict(config=get_session_config(), batch_size=FLAGS.batch_size)
+    mode = FLAGS.mode
+    if mode is not None:
+        kwargs['mode'] = mode
+    return data_source.vis_inputs(**kwargs)
 
 
 def report_train_tests(coord):
