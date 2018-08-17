@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
-from .modes import Modes
+ModeKeys = tf.estimator.ModeKeys
 
 
 class Coordinator(object):
@@ -43,7 +43,7 @@ class Coordinator(object):
             mode=mode,
             predictions=predictions
         )
-        if mode == Modes.PREDICT:
+        if mode == ModeKeys.PREDICT:
             return tf.estimator.EstimatorSpec(**kwargs)
 
         loss = self.train_model.get_total_loss(inference, labels)
@@ -52,7 +52,7 @@ class Coordinator(object):
                 predictions, labels)
 
         kwargs['loss'] = loss
-        if mode == Modes.EVAL:
+        if mode == ModeKeys.EVAL:
             return tf.estimator.EstimatorSpec(**kwargs)
         kwargs['train_op'] = self.train_model.get_train_op(loss)
         return tf.estimator.EstimatorSpec(**kwargs)
@@ -76,30 +76,31 @@ class Coordinator(object):
         estimator = self.get_estimator(config=config)
 
         return estimator.train(
-            lambda: self.get_inputs(Modes.TRAIN),
+            lambda: self.get_inputs(ModeKeys.TRAIN),
             max_steps=self.train_model.max_steps)
 
     def evaluate(self, config=None, input_kwargs={}, **eval_kwargs):
         estimator = self.get_estimator(config=config)
         return estimator.evaluate(
-            lambda: self.get_inputs(Modes.EVAL, **input_kwargs), **eval_kwargs)
+            lambda: self.get_inputs(ModeKeys.EVAL, **input_kwargs),
+            **eval_kwargs)
 
     def predict(self, config=None, input_kwargs={}, **predict_kwargs):
         estimator = self.get_estimator(config=config)
         return estimator.predict(
-            lambda: self.get_inputs(Modes.PREDICT, **input_kwargs),
+            lambda: self.get_inputs(ModeKeys.PREDICT, **input_kwargs),
             **predict_kwargs)
 
     def vis_predictions(
-            self, config=None, data_mode=Modes.PREDICT, **predict_kwargs):
+            self, config=None, data_mode=ModeKeys.PREDICT, **predict_kwargs):
         if data_mode is None:
-            data_mode = Modes.PREDICT
+            data_mode = ModeKeys.PREDICT
         nest = tf.contrib.framework.nest
         graph = tf.Graph()
         with graph.as_default():
             features, labels = self.get_inputs(mode=data_mode)
             spec = self.get_estimator_spec(
-                features, labels, mode=Modes.PREDICT)
+                features, labels, mode=ModeKeys.PREDICT)
             predictions = spec.predictions
             if self._misc_fn is not None:
                 misc = self._misc_fn(spec, labels)
@@ -146,7 +147,7 @@ class Coordinator(object):
         vis.close()
 
     def create_profile(
-            self, data_mode=Modes.TRAIN, inference_mode=Modes.TRAIN,
+            self, data_mode=ModeKeys.TRAIN, inference_mode=ModeKeys.TRAIN,
             batch_size=None, path=None, skip_runs=10, use_dummy_inputs=False,
             config=None):
         import os
@@ -184,9 +185,9 @@ class Coordinator(object):
         import tf_toolbox.testing
 
         def get_train_op():
-            features, labels = self.get_inputs(Modes.TRAIN)
+            features, labels = self.get_inputs(ModeKeys.TRAIN)
             return self.get_estimator_spec(
-                features, labels, Modes.TRAIN).train_op
+                features, labels, ModeKeys.TRAIN).train_op
 
         if variable_change_test:
             tf_toolbox.testing.report_train_val_changes(

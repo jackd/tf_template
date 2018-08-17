@@ -5,6 +5,13 @@ import tensorflow as tf
 
 
 class TrainModel(object):
+    """
+    Object responsible for training a model.
+
+    Non-abstract implementations must implement:
+        get_inference_loss
+        get_optimization_op
+    """
     def __init__(self, batch_size, max_steps):
         self._batch_size = batch_size
         self._max_steps = max_steps
@@ -20,12 +27,7 @@ class TrainModel(object):
     def get_inference_loss(self, inference, labels):
         raise NotImplementedError('Abstract method')
 
-    def before_loss_calc(self):
-        """Funcion called before total/inference loss is calculated."""
-        pass
-
     def get_total_loss(self, inference, labels):
-        self.before_loss_calc()
         inference_loss = self.get_inference_loss(inference, labels)
         losses = tf.get_collection(tf.GraphKeys.LOSSES)
         if len(losses) == 0:
@@ -52,19 +54,16 @@ class TrainModel(object):
 
     @staticmethod
     def from_fns(
-            inference_loss_fn, optimization_op_fn, batch_size, max_steps,
-            before_loss_calc_fn=None):
+            inference_loss_fn, optimization_op_fn, batch_size, max_steps):
         return TrainModelBase(
-            inference_loss_fn, optimization_op_fn, batch_size, max_steps,
-            before_loss_calc_fn=before_loss_calc_fn)
+            inference_loss_fn, optimization_op_fn, batch_size, max_steps)
 
 
 class TrainModelBase(TrainModel):
     def __init__(self, inference_loss_fn, optimization_op_fn, batch_size,
-                 max_steps, before_loss_calc_fn=None):
+                 max_steps):
         self._inference_loss_fn = inference_loss_fn
         self._optimization_op_fn = optimization_op_fn
-        self._before_loss_calc_fn = before_loss_calc_fn
         super(TrainModelBase, self).__init__(batch_size, max_steps)
 
     def get_inference_loss(self, inference, labels):
@@ -72,7 +71,3 @@ class TrainModelBase(TrainModel):
 
     def get_optimization_op(self, loss, global_step):
         return self._optimization_op_fn(loss, global_step)
-
-    def before_loss_calc(self):
-        if self._before_loss_calc_fn is not None:
-            self._before_loss_calc_fn()

@@ -1,9 +1,23 @@
+"""
+Provides `Visualization` interface and common implementations.
+
+A `Visualization` is something that can be shown (with optional blocking) and
+closed.
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 
 class Visualization(object):
+    """
+    Something that can be shown and closed on demand.
+
+    Used for combining visualizations of different kinds, e.g. mayavi
+    figures and plt figures.
+
+    See implementations for example usage.
+    """
 
     def show(self, block=False):
         raise NotImplementedError('Abstract method')
@@ -37,6 +51,7 @@ class CompoundVis(Visualization):
 
 
 class PltVis(Visualization):
+    """Generic Visualization based on matplotlib.pyplot."""
     def show(self, block=False):
         import matplotlib.pyplot as plt
         plt.show(block=block)
@@ -67,6 +82,8 @@ class MultiImageVis(PltVis):
 
 
 class PrintVis(Visualization):
+    """Default Visualization that prints data to screen."""
+
     def __init__(self, data):
         self._data = data
 
@@ -81,6 +98,14 @@ class PrintVis(Visualization):
 
 
 def get_vis(*vis):
+    """
+    Wrap different data in default `Visualization`sself.
+
+    2 or 3D numpy array: imshow
+    object with a `vis` and `close` attribute: itself
+    non-string iterable: CompoundVis
+    otherwise: PrintVis
+    """
     import numpy as np
     if len(vis) == 1:
         vis = vis[0]

@@ -4,23 +4,38 @@ from __future__ import print_function
 
 import tensorflow as tf
 from .visualization import get_vis
-from .modes import Modes
 from .util import maybe_stop
+ModeKeys = tf.estimator.ModeKeys
 
 
 def get_dummy_input(spec):
+    """Get random inputs based on the input `tf.layers.InputSpec`."""
     dtype = spec.dtype
     return tf.random_uniform(
         shape=spec.shape, minval=dtype.min, maxval=dtype.max, dtype=dtype)
 
 
 def get_dummy_inputs(*specs):
+    """
+    Get random inputs based on the (possibly nested) `tf.layers.InputSpec`s.
+    """
     nest = tf.contrib.framework.nest
     return nest.map_structure(get_dummy_input, specs)
 
 
 class DataSource(object):
     def get_inputs(self, mode, batch_size=None):
+        """
+        Get input tensors (or nested structures) for `features, labels`.
+
+        Args:
+            mode: one of tf.estimator.ModeKeys - 'train', 'eval', 'infer'
+            batch_size: size of resulting batch
+
+        Returns:
+            (features, labels) each of which is a (possibly nested) structure
+            of tensors.
+        """
         raise NotImplementedError('Abstract method')
 
     def get_input_spec(self, mode, batch_size=None):
@@ -50,24 +65,29 @@ class DataSource(object):
         return get_dummy_inputs(*self.get_input_spec(mode, batch_size))
 
     def feature_vis(self, features):
+        """Get a vis for features as returned by get_inputs (first output)."""
         raise NotImplementedError('Abstract method')
 
     def label_vis(self, label):
+        """Get a vis for labels as returned by get_inputs (second output)."""
         raise NotImplementedError('Abstract method')
 
     def input_vis(self, features, labels=None):
+        """Get a vis for features and optionally labels."""
         vis = self.feature_vis(features)
         if labels is not None:
             vis = (vis, self.label_vis(labels))
         return vis
 
     def vis_input_data(self, features, labels=None):
+        """Visualize (features, labels) associated with a single example."""
         vis = get_vis(self.input_vis(features, labels))
         vis.show(block=False)
         maybe_stop()
         vis.close()
 
-    def vis_inputs(self, mode=Modes.TRAIN, config=None, batch_size=None):
+    def vis_inputs(self, mode=ModeKeys.TRAIN, config=None, batch_size=None):
+        """Visualize inputs by building the graph and running the session."""
         nest = tf.contrib.framework.nest
         graph = tf.Graph()
         with graph.as_default():

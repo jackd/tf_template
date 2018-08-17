@@ -9,6 +9,7 @@ except NameError:
 
 
 def maybe_stop():
+    """Prompt user to continue or stop."""
     inp = get_input('Continue? (Y/n): ').lower().rstrip()
     if inp == 'n':
         exit()
