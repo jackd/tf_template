@@ -29,13 +29,16 @@ class TrainModel(object):
 
     def get_total_loss(self, inference, labels):
         inference_loss = self.get_inference_loss(inference, labels)
-        losses = tf.get_collection(tf.GraphKeys.LOSSES)
-        if len(losses) == 0:
+        tf.summary.scalar('inference_loss', inference_loss)
+        losses = [inference_loss]
+        for key in (tf.GraphKeys.REGULARIZATION_LOSSES, tf.GraphKeys.LOSSES):
+            losses.extend(tf.get_collection(key))
+        # Ensure we don't double count
+        losses = list(set(losses))
+
+        if len(losses) == 1:
             return inference_loss
         else:
-            if inference_loss not in losses:
-                losses.append(inference_loss)
-            tf.summary.scalar('inference_loss', inference_loss)
             return tf.add_n(losses)
 
     def get_optimization_op(self, loss, global_step):
