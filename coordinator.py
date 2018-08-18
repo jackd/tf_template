@@ -128,7 +128,7 @@ class Coordinator(object):
 
     def prediction_vis(self, features, predictions, labels=None, misc=None):
         vis = []
-        vis.append(self.data_source.inputs_vis(features, labels))
+        vis.append(self.data_source.input_vis(features, labels))
         vis.append(self.inference_model.prediction_vis(predictions))
         if self._misc_vis_fn is not None:
             vis.append(self._misc_vis_fn(misc))
