@@ -96,6 +96,17 @@ class Coordinator(object):
             lambda: self.get_inputs(ModeKeys.PREDICT, **input_kwargs),
             **predict_kwargs)
 
+    def train_and_evaluate(self, config=None, **eval_spec_kwargs):
+        estimator = self.get_estimator(config=config)
+        train_spec = tf.estimator.TrainSpec(
+            lambda: self.get_inputs(ModeKeys.TRAIN),
+            max_steps=self.train_model.max_steps)
+        eval_spec = tf.estimator.EvalSpec(
+            lambda: self.get_inputs(ModeKeys.TRAIN),
+            **eval_spec_kwargs)
+        return tf.estimator.train_and_evaluate(
+            estimator=estimator, train_spec=train_spec, eval_spec=eval_spec)
+
     def vis_predictions(
             self, config=None, data_mode=ModeKeys.PREDICT, **predict_kwargs):
         if data_mode is None:

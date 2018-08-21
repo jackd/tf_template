@@ -31,7 +31,7 @@ flags.DEFINE_string('mode', default=None, help='train/eval/infer')
 flags.DEFINE_integer(
     'batch_size', default=None, help='batch size for vis_inputs')
 flags.DEFINE_integer(
-    'n_eval_steps', default=None, help='number of steps used for evaluation')
+    'n_eval_steps', default=100, help='number of steps used for evaluation')
 
 flags.DEFINE_string(
     'period', default='00:10:00', help='time per repeat hh:mm:ss')
@@ -134,30 +134,39 @@ def train(coord):
     return coord.train(config=get_estimator_config()),
 
 
-def train_and_eval(coord):
-    import multiprocessing
-    memory_frac = FLAGS.memory_frac
-    if memory_frac is None:
-        raise ValueError('memory_frac must be provided for train_and_eval')
-    elif memory_frac > 0.5:
-        raise ValueError('memory_frac cannot be greater than 0.5')
+# def train_and_eval(coord):
+#     import multiprocessing
+#     memory_frac = FLAGS.memory_frac
+#     if memory_frac is None:
+#         raise ValueError('memory_frac must be provided for train_and_eval')
+#     elif memory_frac > 0.5:
+#         raise ValueError('memory_frac cannot be greater than 0.5')
+#
+#     def eval_fn():
+#         return periodic_evaluate(coord)
+#
+#     eval_process = multiprocessing.Process(target=eval_fn)
+#     eval_process.start()
+#     try:
+#         train(coord)
+#     except Exception:
+#         eval_process.terminate()
+#         raise
+#     except KeyboardInterrupt:
+#         eval_process.terminate()
+#         raise
+#     if eval_process.is_alive():
+#         eval_process.terminate()
+#     evaluate(coord)
 
-    def eval_fn():
-        return periodic_evaluate(coord)
-
-    eval_process = multiprocessing.Process(target=eval_fn)
-    eval_process.start()
-    try:
-        train(coord)
-    except Exception:
-        eval_process.terminate()
-        raise
-    except KeyboardInterrupt:
-        eval_process.terminate()
-        raise
-    if eval_process.is_alive():
-        eval_process.terminate()
-    evaluate(coord)
+def train_and_evaluate(coord):
+    eval_spec_kwargs = dict(
+        throttle_secs=get_period(),
+        start_delay_secs=get_delay(),
+        steps=FLAGS.n_eval_steps,
+    )
+    return coord.train_and_evaluate(
+        config=get_estimator_config(), **eval_spec_kwargs)
 
 
 _coord_fns = {
@@ -172,11 +181,15 @@ _coord_fns = {
     'test': lambda coord: report_train_tests(coord),
     'clean': lambda coord: coord.clean(confirm=not FLAGS.force_confirm),
     'periodic_evaluate': periodic_evaluate,
-    'train_and_eval': train_and_eval,
+    'train_and_evaluate': train_and_evaluate,
 }
 
 _coord_fns['eval'] = _coord_fns['evaluate']
+_coord_fns['train_and_eval'] = _coord_fns['train_and_evaluate']
 _coord_fns['periodic_eval'] = _coord_fns['periodic_evaluate']
+eval = evaluate
+periodic_eval = periodic_evaluate
+train_and_eval = train_and_evaluate
 
 
 def register_coord_fn(action, fn):
