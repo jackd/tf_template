@@ -59,3 +59,29 @@ class InferenceModel(object):
         Can be None, in which case variables are initialized from scratch.
         """
         return None
+
+
+class DelegatingInferenceModel(InferenceModel):
+    """
+    Wrapper class that defaults to redirecting all methods to another model.
+
+    Derived classes presumably override some methods.
+    """
+    def __init__(self, base):
+        self._base = base
+
+    @property
+    def base(self):
+        return self._base
+
+    def get_inference(self, features, mode):
+        return self._base.get_inference(features, mode)
+
+    def get_predictions(self, features, inference):
+        return self._base.get_predictions(features, inference)
+
+    def prediction_vis(self, prediction_data):
+        return self._base.prediction_vis(prediction_data)
+
+    def get_warm_start_settings(self):
+        return self._base.get_warm_start_settings()

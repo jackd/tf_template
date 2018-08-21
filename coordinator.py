@@ -35,6 +35,12 @@ class Coordinator(object):
     def model_dir(self):
         return self._model_dir
 
+    def get_eval_metric_ops(self, predictions, labels):
+        if self._eval_metric_ops_fn is None:
+            return None
+        else:
+            return self._eval_metric_ops_fn(predictions, labels)
+
     def get_estimator_spec(self, features, labels, mode):
         inference = self.inference_model.get_inference(features, mode)
         predictions = self.inference_model.get_predictions(
@@ -47,9 +53,8 @@ class Coordinator(object):
             return tf.estimator.EstimatorSpec(**kwargs)
 
         loss = self.train_model.get_total_loss(inference, labels)
-        if self._eval_metric_ops_fn is not None:
-            kwargs['eval_metric_ops'] = self._eval_metric_ops_fn(
-                predictions, labels)
+        kwargs['eval_metric_ops'] = self.get_eval_metric_ops(
+            predictions, labels)
 
         kwargs['loss'] = loss
         if mode == ModeKeys.EVAL:
