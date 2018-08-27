@@ -11,8 +11,11 @@ ModeKeys = tf.estimator.ModeKeys
 def get_dummy_input(spec):
     """Get random inputs based on the input `tf.layers.InputSpec`."""
     dtype = spec.dtype
-    return tf.random_uniform(
-        shape=spec.shape, minval=dtype.min, maxval=dtype.max, dtype=dtype)
+    if dtype == tf.bool:
+        return tf.random_normal(shape=spec.shape, dtype=tf.float32) > 0
+    else:
+        return tf.random_uniform(
+            shape=spec.shape, minval=dtype.min, maxval=dtype.max, dtype=dtype)
 
 
 def get_dummy_inputs(*specs):

@@ -10,7 +10,8 @@ ModeKeys = tf.estimator.ModeKeys
 class Coordinator(object):
     def __init__(
             self, data_source, inference_model, train_model, model_dir,
-            eval_metric_ops_fn=None, misc_fn=None, misc_vis_fn=None):
+            eval_metric_ops_fn=None, misc_fn=None, misc_vis_fn=None,
+            custom_hooks_fn=None):
         self._inference_model = inference_model
         self._data_source = data_source
         self._train_model = train_model
@@ -18,6 +19,7 @@ class Coordinator(object):
         self._eval_metric_ops_fn = eval_metric_ops_fn
         self._misc_fn = misc_fn
         self._misc_vis_fn = misc_vis_fn
+        self._custom_hooks_fn = custom_hooks_fn
 
     @property
     def inference_model(self):
@@ -40,6 +42,12 @@ class Coordinator(object):
             return None
         else:
             return self._eval_metric_ops_fn(predictions, labels)
+
+    def get_custom_hooks(self, mode):
+        if self._custom_hooks_fn is None:
+            return None
+        else:
+            return self._custom_hooks_fn(self, mode)
 
     def get_estimator_spec(self, features, labels, mode):
         inference = self.inference_model.get_inference(features, mode)
@@ -82,27 +90,32 @@ class Coordinator(object):
 
         return estimator.train(
             lambda: self.get_inputs(ModeKeys.TRAIN),
-            max_steps=self.train_model.max_steps)
+            max_steps=self.train_model.max_steps,
+            hooks=self.get_custom_hooks(ModeKeys.TRAIN))
 
     def evaluate(self, config=None, input_kwargs={}, **eval_kwargs):
         estimator = self.get_estimator(config=config)
         return estimator.evaluate(
             lambda: self.get_inputs(ModeKeys.EVAL, **input_kwargs),
+            hooks=self.get_custom_hooks(ModeKeys.EVAL),
             **eval_kwargs)
 
     def predict(self, config=None, input_kwargs={}, **predict_kwargs):
         estimator = self.get_estimator(config=config)
         return estimator.predict(
             lambda: self.get_inputs(ModeKeys.PREDICT, **input_kwargs),
+            hooks=self.get_custom_hooks(ModeKeys.PREDICT),
             **predict_kwargs)
 
     def train_and_evaluate(self, config=None, **eval_spec_kwargs):
         estimator = self.get_estimator(config=config)
         train_spec = tf.estimator.TrainSpec(
             lambda: self.get_inputs(ModeKeys.TRAIN),
-            max_steps=self.train_model.max_steps)
+            max_steps=self.train_model.max_steps,
+            hooks=self.get_custom_hooks(ModeKeys.TRAIN))
         eval_spec = tf.estimator.EvalSpec(
             lambda: self.get_inputs(ModeKeys.TRAIN),
+            hooks=self.get_custom_hooks(ModeKeys.EVAL),
             **eval_spec_kwargs)
         return tf.estimator.train_and_evaluate(
             estimator=estimator, train_spec=train_spec, eval_spec=eval_spec)
