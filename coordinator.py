@@ -10,15 +10,12 @@ ModeKeys = tf.estimator.ModeKeys
 class Coordinator(object):
     def __init__(
             self, data_source, inference_model, train_model, model_dir,
-            eval_metric_ops_fn=None, misc_fn=None, misc_vis_fn=None,
-            custom_hooks_fn=None):
+            eval_metric_ops_fn=None, custom_hooks_fn=None):
         self._inference_model = inference_model
         self._data_source = data_source
         self._train_model = train_model
         self._model_dir = model_dir
         self._eval_metric_ops_fn = eval_metric_ops_fn
-        self._misc_fn = misc_fn
-        self._misc_vis_fn = misc_vis_fn
         self._custom_hooks_fn = custom_hooks_fn
 
     @property
@@ -122,26 +119,39 @@ class Coordinator(object):
 
     def vis_predictions(
             self, config=None, data_mode=ModeKeys.PREDICT, **predict_kwargs):
+        nest = tf.contrib.framework.nest
         if data_mode is None:
             data_mode = ModeKeys.PREDICT
-        nest = tf.contrib.framework.nest
+
+        # def get_predictions_spec(features, labels, mode):
+        #     base_spec = self.get_estimator_spec(features, labels, mode)
+        #     predictions = dict(
+        #         predictions=base_spec.predictions,
+        #         features=features)
+        #     if labels is not None:
+        #         predictions['labels'] = labels
+        #     return tf.estimator.EstimatorSpec(
+        #         predictions=predictions, mode=mode)
+        #
+        # estimator = tf.estimator.Estimator(
+        #     model_fn=get_predictions_spec, model_dir=self.model_dir,
+        #     config=config)
+        # for prediction in estimator.predict(
+        #         lambda: self.get_inputs(mode=data_mode), **predict_kwargs):
+        #     self.vis_prediction_data(**prediction)
+
         graph = tf.Graph()
         with graph.as_default():
             features, labels = self.get_inputs(mode=data_mode)
             spec = self.get_estimator_spec(
                 features, labels, mode=ModeKeys.PREDICT)
             predictions = spec.predictions
-            if self._misc_fn is not None:
-                misc = self._misc_fn(spec, labels)
-            else:
-                misc = None
 
-            session_creator = tf.train.ChiefSessionCreator(config=config)
+            session_creator = tf.train.ChiefSessionCreator(
+                config=config.session_config)
             tensors = dict(features=features, predictions=predictions)
             if labels is not None:
                 tensors['labels'] = labels
-            if misc is not None:
-                tensors['misc'] = misc
             saver = tf.train.Saver()
 
             with tf.train.MonitoredSession(
@@ -155,19 +165,17 @@ class Coordinator(object):
                         record = nest.pack_sequence_as(tensors, record)
                         self.vis_prediction_data(**record)
 
-    def prediction_vis(self, features, predictions, labels=None, misc=None):
+    def prediction_vis(self, features, predictions, labels=None):
         vis = []
         vis.append(self.data_source.input_vis(features, labels))
         vis.append(self.inference_model.prediction_vis(predictions))
-        if self._misc_vis_fn is not None:
-            vis.append(self._misc_vis_fn(misc))
         return vis
 
     def vis_prediction_data(
-            self, features, predictions, labels=None, misc=None):
+            self, features, predictions, labels=None):
         from .util import maybe_stop
         from .visualization import get_vis
-        vis = self.prediction_vis(features, predictions, labels, misc)
+        vis = self.prediction_vis(features, predictions, labels)
         vis = get_vis(*vis)
         vis.show(block=False)
         maybe_stop()
