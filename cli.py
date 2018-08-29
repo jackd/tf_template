@@ -186,7 +186,7 @@ _coord_fns = {
     'vis_predictions': lambda coord: coord.vis_predictions(
         config=get_run_config(), data_mode=FLAGS.mode),
     'profile': lambda coord: coord.create_profile(
-        config=get_run_config(), skip_runs=FLAGS.n_runs,
+        config=get_session_config(), skip_runs=FLAGS.n_runs,
         use_dummy_inputs=FLAGS.use_dummy_inputs),
     'test': lambda coord: report_train_tests(coord),
     'clean': lambda coord: coord.clean(confirm=not FLAGS.force_confirm),
