@@ -150,7 +150,7 @@ def periodic_evaluate(coord):
 
 
 def vis_inputs(data_source):
-    kwargs = dict(config=get_run_config(), batch_size=FLAGS.batch_size)
+    kwargs = dict(config=get_session_config(), batch_size=FLAGS.batch_size)
     mode = FLAGS.mode
     if mode is not None:
         kwargs['mode'] = mode
