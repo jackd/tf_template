@@ -92,15 +92,18 @@ class Coordinator(object):
 
     def evaluate(self, config=None, input_kwargs={}, **eval_kwargs):
         estimator = self.get_estimator(config=config)
+        input_kwargs.setdefault(mode=ModeKeys.EVAL)
         return estimator.evaluate(
-            lambda: self.get_inputs(ModeKeys.EVAL, **input_kwargs),
+            lambda: self.get_inputs(**input_kwargs),
             hooks=self.get_custom_hooks(ModeKeys.EVAL),
             **eval_kwargs)
 
     def predict(self, config=None, input_kwargs={}, **predict_kwargs):
         estimator = self.get_estimator(config=config)
+        input_kwargs = input_kwargs.copy()
+        input_kwargs.setdefault('mode', ModeKeys.PREDICT)
         return estimator.predict(
-            lambda: self.get_inputs(ModeKeys.PREDICT, **input_kwargs),
+            lambda: self.get_inputs(**input_kwargs),
             hooks=self.get_custom_hooks(ModeKeys.PREDICT),
             **predict_kwargs)
 

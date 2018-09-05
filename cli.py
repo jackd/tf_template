@@ -126,8 +126,13 @@ def get_delay():
 
 
 def evaluate(coord):
+    input_kwargs = {}
+    if FLAGS.mode is not None:
+        input_kwargs['mode'] = FLAGS.mode
     return coord.evaluate(
-        config=get_run_config(), steps=FLAGS.n_eval_steps)
+        config=get_run_config(),
+        input_kwargs=input_kwargs,
+        steps=FLAGS.n_eval_steps)
 
 
 def periodic_evaluate(coord):

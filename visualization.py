@@ -52,7 +52,11 @@ class CompoundVis(Visualization):
 
 class PltVis(Visualization):
     """Generic Visualization based on matplotlib.pyplot."""
+    def __init__(self, f):
+        self._f = f
+
     def show(self, block=False):
+        self._f()
         import matplotlib.pyplot as plt
         plt.show(block=block)
 
@@ -61,24 +65,34 @@ class PltVis(Visualization):
         plt.close()
 
 
-class ImageVis(PltVis):
-    def __init__(self, image, **imshow_kwargs):
-        import numpy as np
+def get_image_vis(image, **imshow_kwargs):
+    import numpy as np
+    if len(image.shape) == 3 and image.shape[-1] == 1:
+        image = np.squeeze(image, axis=-1)
+
+    def f():
         import matplotlib.pyplot as plt
-        self._fig, self._ax = plt.subplots(1, 1)
-        if len(image.shape) == 3 and image.shape[-1] == 1:
-            image = np.squeeze(image, axis=-1)
-        self._ax.imshow(image, **imshow_kwargs)
+        fig, ax = plt.subplots(1, 1)
+        ax.imshow(image, **imshow_kwargs)
+
+    return PltVis(f)
 
 
-class MultiImageVis(PltVis):
-    def __init__(self, images, *grid_shape, **imshow_kwargs):
-        import numpy as np
-        import matplotlib.pyplot as plt
-        assert(np.prod(grid_shape) == len(images))
-        self._fig, self._ax = plt.subplots(*grid_shape)
-        for ax, image in zip(self._ax.flatten(), images):
+def get_multi_image_vis(images, *grid_shape, **imshow_kwargs):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    assert(np.prod(grid_shape) == len(images))
+
+    def f():
+        fig, ax = plt.subplots(*grid_shape)
+        for ax, image in zip(ax.flatten(), images):
             ax.imshow(image, **imshow_kwargs)
+
+    return PltVis(f)
+
+
+ImageVis = get_image_vis
+MultiImageVis = get_multi_image_vis
 
 
 class PrintVis(Visualization):
@@ -99,7 +113,7 @@ class PrintVis(Visualization):
 
 def get_vis(*vis):
     """
-    Wrap different data in default `Visualization`sself.
+    Wrap different data in default `Visualization`.
 
     2 or 3D numpy array: imshow
     object with a `vis` and `close` attribute: itself
