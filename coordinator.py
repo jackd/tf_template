@@ -92,7 +92,7 @@ class Coordinator(object):
 
     def evaluate(self, config=None, input_kwargs={}, **eval_kwargs):
         estimator = self.get_estimator(config=config)
-        input_kwargs.setdefault(mode=ModeKeys.EVAL)
+        input_kwargs.setdefault('mode', ModeKeys.EVAL)
         return estimator.evaluate(
             lambda: self.get_inputs(**input_kwargs),
             hooks=self.get_custom_hooks(ModeKeys.EVAL),
