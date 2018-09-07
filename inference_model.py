@@ -85,3 +85,12 @@ class DelegatingInferenceModel(InferenceModel):
 
     def get_warm_start_settings(self):
         return self._base.get_warm_start_settings()
+
+
+class TransferInferenceModel(DelegatingInferenceModel):
+    def __init__(self, base, warm_start_settings):
+        self._warm_start_settings = warm_start_settings
+        super(TransferInferenceModel, self).__init__(base)
+
+    def get_warm_start_settings(self):
+        return self._warm_start_settings
