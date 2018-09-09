@@ -114,7 +114,7 @@ class Coordinator(object):
             max_steps=self.train_model.max_steps,
             hooks=self.get_custom_hooks(ModeKeys.TRAIN))
         eval_spec = tf.estimator.EvalSpec(
-            lambda: self.get_inputs(ModeKeys.TRAIN),
+            lambda: self.get_inputs(ModeKeys.EVAL),
             hooks=self.get_custom_hooks(ModeKeys.EVAL),
             **eval_spec_kwargs)
         return tf.estimator.train_and_evaluate(
