@@ -50,7 +50,7 @@ flags.DEFINE_integer(
 flags.DEFINE_integer(
     'n_eval_steps', default=100, help='number of steps used for evaluation')
 flags.DEFINE_string(
-    'period', default='00:10:00', help='time per repeat hh:mm:ss')
+    'period', default='00:09:00', help='time per repeat hh:mm:ss')
 flags.DEFINE_string(
     'delay', default='00:01:00', help='time before first repeat, hh:mm:ss')
 
