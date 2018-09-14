@@ -40,7 +40,8 @@ class CompoundVis(Visualization):
     def show(self, block=False):
         for v in self._visualizations[:-1]:
             v.show(block=False)
-        self._visualizations[-1].show(block=block)
+        if len(self._visualizations) > 0:
+            self._visualizations[-1].show(block=block)
         if block:
             for v in self._visualizations[:-1]:
                 v.close()
@@ -136,7 +137,7 @@ def get_vis(*vis):
     elif isinstance(vis, (str, unicode)):
         return PrintVis(vis)
     elif hasattr(vis, '__iter__'):
-        vis = tuple(get_vis(v) for v in vis)
+        vis = tuple(get_vis(v) for v in vis if v is not None)
         return CompoundVis(*vis)
     else:
         return PrintVis(vis)
