@@ -50,6 +50,27 @@ class CompoundVis(Visualization):
             v.close()
 
 
+class PILVis(Visualization):
+    def __init__(self, image_data, shape=None, title=None):
+        from PIL import Image
+        import numpy as np
+        if isinstance(image_data, np.ndarray):
+            image_data = Image.fromarray(image_data)
+        if shape is not None:
+            image_data = image_data.resize(shape)
+        self._image_data = image_data
+        self._title = title
+
+    def show(self, block=False):
+        from .util import get_input
+        self._image_data.show(title=self._title)
+        if block:
+            get_input('Enter to continue')
+
+    def close(self):
+        pass
+
+
 class PltVis(Visualization):
     """Generic Visualization based on matplotlib.pyplot."""
     def __init__(self, f):

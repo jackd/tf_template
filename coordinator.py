@@ -257,3 +257,11 @@ class Coordinator(object):
             else:
                 raise ValueError('Invalid input "%s"' % inp)
         self._clean()
+
+    def count_trainable_parameters(self, mode=ModeKeys.TRAIN):
+        graph = tf.Graph()
+        with graph.as_default():
+            features, labels = self.get_inputs(mode, batch_size=1)
+            self.get_estimator_spec(features, labels, mode)
+            return sum(
+                t.shape.num_elements() for t in tf.trainable_variables())

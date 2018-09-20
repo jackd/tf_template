@@ -3,6 +3,9 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import flags
+import logging
+
+logger = logging.getLogger(__name__)
 
 FLAGS = flags.FLAGS
 
@@ -139,18 +142,18 @@ def periodic_evaluate(coord):
     import time
     period = get_period()
     delay = get_delay()
-    print('Running evaluate periodically')
-    print('delay: %ds' % delay)
-    print('period: %ds' % period)
+    logging.info('Running evaluate periodically')
+    logging.info('delay: %ds' % delay)
+    logging.info('period: %ds' % period)
     if delay > 0:
         time.sleep(delay)
     while True:
         t = time.time()
-        print('Evaluating...')
+        logging.info('Evaluating...')
         evaluate(coord)
         remaining = period - (time.time() - t)
         if remaining > 0:
-            print('Sleeping for %ss...' % remaining)
+            logging.info('Sleeping for %ss...' % remaining)
             time.sleep(remaining)
 
 
@@ -166,7 +169,7 @@ def report_train_tests(coord):
     return coord.report_train_tests(
         variable_change_test=FLAGS.test_variables_changed,
         update_ops_test=FLAGS.test_update_ops,
-        config=get_run_config(),
+        config=get_session_config(),
         steps=FLAGS.n_runs)
 
 
@@ -184,6 +187,16 @@ def train_and_evaluate(coord):
         config=get_run_config(), **eval_spec_kwargs)
 
 
+def count_trainable_parameters(coord):
+    if FLAGS.mode is not None:
+        kwargs = dict(mode=FLAGS.mode)
+    else:
+        kwargs = {}
+    logging.info(
+        'Total trainable parameter count: %d'
+        % coord.count_trainable_parameters(**kwargs))
+
+
 _coord_fns = {
     'vis_inputs': lambda coord: vis_inputs(coord.data_source),
     'train': train,
@@ -197,6 +210,7 @@ _coord_fns = {
     'clean': lambda coord: coord.clean(confirm=not FLAGS.force_confirm),
     'periodic_evaluate': periodic_evaluate,
     'train_and_evaluate': train_and_evaluate,
+    'count_trainable_parameters': count_trainable_parameters,
 }
 
 _coord_fns['eval'] = _coord_fns['evaluate']
