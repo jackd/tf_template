@@ -213,7 +213,10 @@ class Coordinator(object):
 
         if path is None:
             fn = 'profile_dummy.json' if use_dummy_inputs else 'profile.json'
-            path = os.path.join(self.model_dir, fn)
+            model_dir = self.model_dir
+            if not os.path.isdir(model_dir):
+                os.makedirs(model_dir)
+            path = os.path.join(model_dir, fn)
 
         create_profile(graph_fn, path, skip_runs=skip_runs, config=config)
 
@@ -258,10 +261,25 @@ class Coordinator(object):
                 raise ValueError('Invalid input "%s"' % inp)
         self._clean()
 
-    def count_trainable_parameters(self, mode=ModeKeys.TRAIN):
+    def count_trainable_parameters(self, scope=None, mode=ModeKeys.TRAIN):
         graph = tf.Graph()
+
+        def count_params(scope=None):
+            vars = tf.trainable_variables(scope)
+            return sum(t.shape.num_elements() for t in vars)
+
         with graph.as_default():
             features, labels = self.get_inputs(mode, batch_size=1)
             self.get_estimator_spec(features, labels, mode)
-            return sum(
-                t.shape.num_elements() for t in tf.trainable_variables())
+            total_count = count_params()
+            if scope is not None:
+                if isinstance(scope, (str, unicode)):
+                    scope_counts = count_params(scope)
+                elif isinstance(scope, (list, tuple)):
+                    scope_counts = [count_params(s) for s in scope]
+                else:
+                    raise TypeError(
+                        'Unrecognized type for scope: %s' % str(scope))
+                return total_count, scope_counts
+            else:
+                return total_count

@@ -13,6 +13,11 @@ def get_dummy_input(spec):
     dtype = spec.dtype
     if dtype == tf.bool:
         return tf.random_normal(shape=spec.shape, dtype=tf.float32) > 0
+    elif dtype == tf.string:
+        shape = spec.shape
+        dummy = tf.constant('dummy string')
+        dummy = tf.reshape(dummy, (1,)*len(shape))
+        return tf.tile(dummy, shape)
     else:
         return tf.random_uniform(
             shape=spec.shape, minval=dtype.min, maxval=dtype.max, dtype=dtype)

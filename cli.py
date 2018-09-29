@@ -62,6 +62,11 @@ flags.DEFINE_integer(
     'batch_size', default=None, help='batch size for vis_inputs')
 flags.DEFINE_string('mode', default=None, help='train/eval/infer')
 
+# for `action == 'count_trainable_parameters'`
+flags.DEFINE_list(
+    'scope', default=None,
+    help='scope name(s) for `count_trainable_parameters`')
+
 
 def get_session_config():
     import tensorflow as tf
@@ -192,9 +197,13 @@ def count_trainable_parameters(coord):
         kwargs = dict(mode=FLAGS.mode)
     else:
         kwargs = {}
-    logging.info(
-        'Total trainable parameter count: %d'
-        % coord.count_trainable_parameters(**kwargs))
+    scopes = FLAGS.scope
+    scopes = [] if scopes is None else scopes
+    kwargs['scope'] = scopes
+    total, scope_count = coord.count_trainable_parameters(**kwargs)
+    for scope, count in zip(scopes, scope_count):
+        logging.info('%s: %d' % (scope, count))
+    logging.info('Total: %d' % total)
 
 
 _coord_fns = {
