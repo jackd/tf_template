@@ -220,6 +220,15 @@ class Coordinator(object):
 
         create_profile(graph_fn, path, skip_runs=skip_runs, config=config)
 
+    def create_inputs_profile(
+            self, mode=ModeKeys.TRAIN, batch_size=None, skip_runs=10,
+            config=None):
+        path = os.path.join(self.model_dir, 'inputs.json')
+        if batch_size is None:
+            batch_size = self.train_model.batch_size
+        self.data_source.create_profile(
+            path, mode, batch_size, skip_runs, config)
+
     def report_train_tests(
             self, variable_change_test=True, update_ops_test=True,
             steps=5, config=None):

@@ -119,3 +119,10 @@ class DataSource(object):
                         for ri in zip(*nest.flatten(record)):
                             self.vis_input_data(
                                 **(nest.pack_sequence_as(tensors, ri)))
+
+    def create_profile(
+            self, path, mode, batch_size, skip_runs=10, config=None):
+        from tf_toolbox.profile import create_profile
+        create_profile(
+            lambda: self.get_inputs(mode, batch_size), path,
+            skip_runs=skip_runs, config=config)

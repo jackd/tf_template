@@ -215,6 +215,8 @@ _coord_fns = {
     'profile': lambda coord: coord.create_profile(
         config=get_session_config(), skip_runs=FLAGS.n_runs,
         use_dummy_inputs=FLAGS.use_dummy_inputs),
+    'profile_inputs': lambda coord: coord.create_inputs_profile(
+        config=get_session_config(), skip_runs=FLAGS.n_runs),
     'test': lambda coord: report_train_tests(coord),
     'clean': lambda coord: coord.clean(confirm=not FLAGS.force_confirm),
     'periodic_evaluate': periodic_evaluate,
