@@ -24,11 +24,7 @@ class TrainModel(object):
     def max_steps(self):
         return self._max_steps
 
-    def get_inference_loss(self, inference, labels):
-        raise NotImplementedError('Abstract method')
-
-    def get_total_loss(self, inference, labels):
-        inference_loss = self.get_inference_loss(inference, labels)
+    def get_total_loss_from_inference_loss(self, inference_loss):
         tf.summary.scalar('inference_loss', inference_loss)
         losses = [inference_loss]
         for key in (tf.GraphKeys.REGULARIZATION_LOSSES, tf.GraphKeys.LOSSES):
@@ -40,6 +36,13 @@ class TrainModel(object):
             return inference_loss
         else:
             return tf.add_n(losses)
+
+    def get_total_loss(self, inference, labels):
+        inference_loss = self.get_inference_loss(inference, labels)
+        return self.combine_losses(inference_loss)
+
+    def get_inference_loss(self, inference, labels):
+        raise NotImplementedError('Abstract method')
 
     def get_optimization_op(self, loss, global_step):
         raise NotImplementedError('Abstract method')
