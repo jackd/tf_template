@@ -130,7 +130,7 @@ class Coordinator(object):
             print('Initializing/loading/saving variables')
             sess.run(init)
             loader.restore(sess, path)
-            saver.saver(sess, self.model_dir)
+            saver.save(sess, os.path.join(self.model_dir, 'model'))
         print('Done!')
 
     def train(self, config=None):
