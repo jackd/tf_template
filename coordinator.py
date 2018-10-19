@@ -74,13 +74,64 @@ class Coordinator(object):
             mode, **input_kwargs)
 
     def get_estimator(self, config=None):
+        kwargs = {}
         if tf.train.latest_checkpoint(self.model_dir) is None:
+            import inspect
             warm_start = self.inference_model.get_warm_start_settings()
-        else:
-            warm_start = None
+            if warm_start is not None:
+                args = inspect.getargspec(tf.estimator.Estimator.__init__)[0]
+                if 'warm_start_from' in args:
+                    kwargs['warm_start_from'] = warm_start
+                else:
+                    print(
+                        'No `warm_start_from` arg in Estimator: '
+                        'manually transfering weights.')
+                    self.manual_warm_start(warm_start)
         return tf.estimator.Estimator(
             self.get_estimator_spec, model_dir=self.model_dir, config=config,
-            warm_start_from=warm_start)
+            **kwargs)
+
+    def manual_warm_start(self, warm_start=None):
+        import re
+        if warm_start is None:
+            warm_start = self.inference_model.get_warm_start_settings()
+        if warm_start is None:
+            return
+
+        if hasattr(warm_start, 'path'):
+            path = warm_start.path
+        elif isinstance(warm_start, (str, unicode)):
+            path = warm_start
+        else:
+            raise TypeError('Unrecognized warm_start type %s' % warm_start)
+
+        if hasattr(warm_start, 'vars_to_warm_start'):
+            vars_to_warm_start = warm_start.vars_to_warm_start
+        else:
+            vars_to_warm_start = None
+
+        print('Manually warm starting...')
+        print('Building graph...')
+        graph = tf.Graph()
+        with graph.as_default():
+            features, labels = self.get_inputs(ModeKeys.TRAIN)
+            self.get_estimator_spec(features, labels, ModeKeys.TRAIN)
+            load_vars = tf.trainable_variables()
+            if vars_to_warm_start is not None:
+                if vars_to_warm_start is not None:
+                    load_vars = [v for v in load_vars if
+                                 re.match(vars_to_warm_start, v.name)]
+            loader = tf.train.Saver(var_list=load_vars)
+            saver = tf.train.Saver()
+            init = tf.train.global_variables_initializer()
+
+        print('Starting session...')
+        with tf.Session(graph=graph) as sess:
+            print('Initializing/loading/saving variables')
+            sess.run(init)
+            loader.restore(sess, path)
+            saver.saver(sess, self.model_dir)
+        print('Done!')
 
     def train(self, config=None):
         estimator = self.get_estimator(config=config)

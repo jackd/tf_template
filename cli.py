@@ -67,6 +67,9 @@ flags.DEFINE_list(
     'scope', default=None,
     help='scope name(s) for `count_trainable_parameters`')
 
+flags.DEFINE_string(
+    'tf_verbosity', default=None, help='used in tf.logging.set_verbosity')
+
 
 def get_session_config():
     import tensorflow as tf
@@ -238,6 +241,15 @@ def register_coord_fn(action, fn):
     _coord_fns[action] = fn
 
 
+def set_verbosity(tf_verbosity=None):
+    import tensorflow as tf
+    if tf_verbosity is None:
+        tf_verbosity = FLAGS.tf_verbosity
+    tf.logging.set_verbosity(getattr(tf.logging, tf_verbosity.upper()))
+
+
 def coord_main(coord):
     action = FLAGS.action
+    if FLAGS.tf_verbosity is not None:
+        set_verbosity(FLAGS.tf_verbosity)
     return _coord_fns[action](coord)
