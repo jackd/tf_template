@@ -123,7 +123,7 @@ class Coordinator(object):
                                  re.match(vars_to_warm_start, v.name)]
             loader = tf.train.Saver(var_list=load_vars)
             saver = tf.train.Saver()
-            init = tf.train.global_variables_initializer()
+            init = tf.global_variables_initializer()
 
         print('Starting session...')
         with tf.Session(graph=graph) as sess:
