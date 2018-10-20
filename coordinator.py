@@ -98,11 +98,12 @@ class Coordinator(object):
         if warm_start is None:
             return
 
-        if hasattr(warm_start, 'path'):
-            path = warm_start.path
+        if hasattr(warm_start, 'ckpt_to_initialize_from'):
+            path = warm_start.ckpt_to_initialize_from
         elif isinstance(warm_start, (str, unicode)):
             path = warm_start
         else:
+            print(warm_start)
             raise TypeError('Unrecognized warm_start type %s' % warm_start)
 
         if hasattr(warm_start, 'vars_to_warm_start'):
