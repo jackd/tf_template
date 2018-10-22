@@ -145,12 +145,15 @@ class Coordinator(object):
             loader = tf.train.Saver(var_list=load_vars)
             saver = tf.train.Saver()
             init = tf.global_variables_initializer()
+            step = tf.train.get_or_create_global_step()
+            reset_step = step.assign(0)
 
         print('Starting session...')
         with tf.Session(graph=graph) as sess:
             print('Initializing/loading/saving variables')
             sess.run(init)
             loader.restore(sess, path)
+            sess.run(reset_step)
             saver.save(sess, os.path.join(self.model_dir, 'model'))
         print('Done!')
 
