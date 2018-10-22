@@ -60,7 +60,7 @@ class Coordinator(object):
         if self._custom_hooks_fn is None:
             return None
         else:
-            return self._custom_hooks_fn(self, mode)
+            return self._custom_hooks_fn(mode)
 
     def get_estimator_spec(self, features, labels, mode):
         inference = self.inference_model.get_inference(features, mode)
