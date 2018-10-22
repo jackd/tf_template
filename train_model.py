@@ -87,3 +87,26 @@ class TrainModelBase(TrainModel):
 
     def get_optimization_op(self, loss, global_step):
         return self._optimization_op_fn(loss, global_step)
+
+
+class UpdateOpsRunner(TrainModel):
+    """
+    TrainModel Implementation that just run update ops.
+
+    e.g. useful for settling batch norm statistics after training.
+    """
+    def get_inference_loss(self, inference, labels):
+        raise RuntimeError('should not be here')
+
+    def get_total_loss(self, inference, labels):
+        return tf.zeros((), dtype=tf.float32)
+
+    def get_optimization_op(self, loss, global_step):
+        raise RuntimeError('should not be here')
+
+    def get_train_op(self, loss):
+        global_step = tf.train.get_or_create_global_step()
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            inc = global_step.assign_add(1)
+        return inc

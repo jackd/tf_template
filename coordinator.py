@@ -18,6 +18,19 @@ class Coordinator(object):
         self._eval_metric_ops_fn = eval_metric_ops_fn
         self._custom_hooks_fn = custom_hooks_fn
 
+    def rebuild(
+            self, model_dir, data_source=None, inference_model=None,
+            train_model=None, eval_metric_ops_fn=None, custom_hooks_fn=None):
+        """Get a new Coordinator object with default args from self."""
+        return Coordinator(
+            data_source=data_source or self._data_source,
+            inference_model=inference_model or self._inference_model,
+            train_model=train_model or self._train_model,
+            model_dir=model_dir,
+            eval_metric_ops_fn=eval_metric_ops_fn or self._eval_metrics_ops_fn,
+            custom_hooks_fn=custom_hooks_fn or self._custom_hooks_fn,
+        )
+
     @property
     def inference_model(self):
         return self._inference_model
@@ -344,3 +357,16 @@ class Coordinator(object):
                 return total_count, scope_counts
             else:
                 return total_count
+
+
+def get_update_ops_coord(base_coord, model_dir, max_steps, batch_size=None):
+    from .train_model import UpdateOpsRunner
+    from .inference_model import TransferInferenceModel
+    if batch_size is None:
+        batch_size = base_coord.train_model.batch_size
+    train_model = UpdateOpsRunner(batch_size=batch_size, max_steps=max_steps)
+    inference_model = TransferInferenceModel(
+        base_coord.inference_model, base_coord.model_dir)
+    return base_coord.rebuild(
+        model_dir=model_dir, inference_model=inference_model,
+        train_model=train_model)
