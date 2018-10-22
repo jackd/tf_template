@@ -30,8 +30,8 @@ class Coordinator(object):
             inference_model=inference_model or self._inference_model,
             train_model=train_model or self._train_model,
             model_dir=model_dir,
-            eval_metric_ops_fn=eval_metric_ops_fn or self._eval_metric_ops_fn,
-            custom_hooks_fn=custom_hooks_fn or self._custom_hooks_fn,
+            eval_metric_ops_fn=eval_metric_ops_fn or self.get_eval_metric_ops,
+            custom_hooks_fn=custom_hooks_fn or self.get_custom_hooks,
         )
 
     @property
@@ -86,14 +86,16 @@ class Coordinator(object):
     def get_inputs(self, mode, **input_kwargs):
         if 'batch_size' not in input_kwargs:
             input_kwargs['batch_size'] = self.train_model.batch_size
-        return self.data_source.get_inputs(
-            mode, **input_kwargs)
+        return self.data_source.get_inputs(mode, **input_kwargs)
+
+    def get_warm_start_settings(self):
+        return self.inference_model.get_warm_start_settings()
 
     def get_estimator(self, config=None):
         kwargs = {}
         if tf.train.latest_checkpoint(self.model_dir) is None:
             import inspect
-            warm_start = self.inference_model.get_warm_start_settings()
+            warm_start = self.get_warm_start_settings()
             if warm_start is not None:
                 args = inspect.getargspec(tf.estimator.Estimator.__init__)[0]
                 if 'warm_start_from' in args:
@@ -110,7 +112,7 @@ class Coordinator(object):
     def manual_warm_start(self, warm_start=None):
         import re
         if warm_start is None:
-            warm_start = self.inference_model.get_warm_start_settings()
+            warm_start = self.get_warm_start_settings()
         if warm_start is None:
             return
 
