@@ -109,7 +109,9 @@ class Coordinator(object):
             self.get_estimator_spec, model_dir=self.model_dir, config=config,
             **kwargs)
 
-    def manual_warm_start(self, warm_start=None):
+    def manual_warm_start(
+            self, warm_start=None,
+            collection=tf.GraphKeys.TRAINABLE_VARIABLES):
         import re
         if warm_start is None:
             warm_start = self.get_warm_start_settings()
@@ -135,7 +137,7 @@ class Coordinator(object):
         with graph.as_default():
             features, labels = self.get_inputs(ModeKeys.TRAIN)
             self.get_estimator_spec(features, labels, ModeKeys.TRAIN)
-            load_vars = tf.trainable_variables()
+            load_vars = tf.get_collection(collection)
             if vars_to_warm_start is not None:
                 if vars_to_warm_start is not None:
                     load_vars = [v for v in load_vars if
