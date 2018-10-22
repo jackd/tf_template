@@ -18,16 +18,19 @@ class Coordinator(object):
         self._eval_metric_ops_fn = eval_metric_ops_fn
         self._custom_hooks_fn = custom_hooks_fn
 
+    def _rebuild(self, model_dir, **kwargs):
+        return Coordinator(model_dir, **kwargs)
+
     def rebuild(
             self, model_dir, data_source=None, inference_model=None,
             train_model=None, eval_metric_ops_fn=None, custom_hooks_fn=None):
         """Get a new Coordinator object with default args from self."""
-        return Coordinator(
+        return self._rebuild(
             data_source=data_source or self._data_source,
             inference_model=inference_model or self._inference_model,
             train_model=train_model or self._train_model,
             model_dir=model_dir,
-            eval_metric_ops_fn=eval_metric_ops_fn or self._eval_metrics_ops_fn,
+            eval_metric_ops_fn=eval_metric_ops_fn or self._eval_metric_ops_fn,
             custom_hooks_fn=custom_hooks_fn or self._custom_hooks_fn,
         )
 
