@@ -345,7 +345,7 @@ class Coordinator(object):
                 raise ValueError('Invalid input "%s"' % inp)
         self._clean()
 
-    def count_trainable_parameters(self, scope=None, mode=ModeKeys.TRAIN):
+    def count_trainable_variables(self, scope=None, mode=ModeKeys.TRAIN):
         graph = tf.Graph()
 
         def count_params(scope=None):
@@ -367,6 +367,34 @@ class Coordinator(object):
                 return total_count, scope_counts
             else:
                 return total_count
+
+    def list_trainable_variables(self, scope=None, mode=ModeKeys.TRAIN):
+        def print_var(v):
+            print('%d %s %s' % (
+                v.shape.num_elements(), str(tuple(v.shape.as_list())), v.name))
+        graph = tf.Graph()
+        if isinstance(scope, (str, unicode)):
+            scope = (scope,)
+        elif scope is None:
+            scope = ()
+        with graph.as_default():
+            features, labels = self.get_inputs(mode, batch_size=1)
+            self.get_estimator_spec(features, labels, mode)
+            all_vars = tf.trainable_variables()
+            accounted_for = set()
+            for s in scope:
+                vars = tf.trainable_variables(scope=s)
+                print('################')
+                print(s)
+                for v in vars:
+                    print_var(v)
+                accounted_for.update(vars)
+            if len(scope) != 0:
+                print('################')
+                print('Remaining')
+            for v in all_vars:
+                if v not in accounted_for:
+                    print_var(v)
 
 
 def get_update_ops_coord(base_coord, model_dir, max_steps, batch_size=None):

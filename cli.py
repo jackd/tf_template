@@ -195,7 +195,7 @@ def train_and_evaluate(coord):
         config=get_run_config(), **eval_spec_kwargs)
 
 
-def count_trainable_parameters(coord):
+def count_trainable_variables(coord):
     if FLAGS.mode is not None:
         kwargs = dict(mode=FLAGS.mode)
     else:
@@ -203,7 +203,7 @@ def count_trainable_parameters(coord):
     scopes = FLAGS.scope
     scopes = [] if scopes is None else scopes
     kwargs['scope'] = scopes
-    total, scope_count = coord.count_trainable_parameters(**kwargs)
+    total, scope_count = coord.count_trainable_variables(**kwargs)
     for scope, count in zip(scopes, scope_count):
         logging.info('%s: %d' % (scope, count))
     logging.info('Total: %d' % total)
@@ -224,7 +224,9 @@ _coord_fns = {
     'clean': lambda coord: coord.clean(confirm=not FLAGS.force_confirm),
     'periodic_evaluate': periodic_evaluate,
     'train_and_evaluate': train_and_evaluate,
-    'count_trainable_parameters': count_trainable_parameters,
+    'count_trainable_variables': count_trainable_variables,
+    'list_trainable_variables':
+        lambda coord: coord.list_trainable_variables(scope=FLAGS.scope)
 }
 
 _coord_fns['eval'] = _coord_fns['evaluate']
