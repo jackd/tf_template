@@ -47,6 +47,13 @@ class TrainModel(object):
         else:
             return tf.add_n(losses)
 
+    def combine_losses(self, inference_loss):
+        reg_loss = self.get_regularization_loss()
+        if reg_loss is None:
+            return inference_loss
+        else:
+            return inference_loss + reg_loss
+
     def get_total_loss(self, inference, labels):
         inference_loss = self.get_inference_loss(inference, labels)
         return self.combine_losses(inference_loss)
