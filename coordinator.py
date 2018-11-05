@@ -18,21 +18,23 @@ class Coordinator(object):
         self._eval_metric_ops_fn = eval_metric_ops_fn
         self._custom_hooks_fn = custom_hooks_fn
 
-    def _rebuild(self, model_dir, **kwargs):
-        return Coordinator(model_dir, **kwargs)
-
-    def rebuild(
-            self, model_dir, data_source=None, inference_model=None,
-            train_model=None, eval_metric_ops_fn=None, custom_hooks_fn=None):
-        """Get a new Coordinator object with default args from self."""
-        return self._rebuild(
-            data_source=data_source or self._data_source,
-            inference_model=inference_model or self._inference_model,
-            train_model=train_model or self._train_model,
-            model_dir=model_dir,
-            eval_metric_ops_fn=eval_metric_ops_fn or self.get_eval_metric_ops,
-            custom_hooks_fn=custom_hooks_fn or self.get_custom_hooks,
+    def to_dict(self):
+        return dict(
+            data_source=self._data_source,
+            inference_model=self._inference_model,
+            train_model=self._train_model,
+            model_dir=self._model_dir,
+            eval_metric_ops_fn=self.get_eval_metric_ops,
+            custom_hooks_fn=self.get_custom_hooks
         )
+
+    def _rebuild(self, **kwargs):
+        return Coordinator(**kwargs)
+
+    def rebuild(self, **kwargs):
+        updates = self.to_dict()
+        updates.update(kwargs)
+        return self._rebuild(**updates)
 
     @property
     def inference_model(self):
@@ -196,8 +198,11 @@ class Coordinator(object):
             estimator=estimator, train_spec=train_spec, eval_spec=eval_spec)
 
     def vis_predictions(
-            self, config=None, data_mode=ModeKeys.PREDICT, **predict_kwargs):
+            self, config=None, data_mode=ModeKeys.PREDICT, batch_size=None,
+            **predict_kwargs):
         nest = tf.contrib.framework.nest
+        input_kwargs = {} if batch_size is None else dict(
+            batch_size=batch_size)
         if data_mode is None:
             data_mode = ModeKeys.PREDICT
 
@@ -220,13 +225,13 @@ class Coordinator(object):
 
         graph = tf.Graph()
         with graph.as_default():
-            features, labels = self.get_inputs(mode=data_mode)
+            features, labels = self.get_inputs(mode=data_mode, **input_kwargs)
             spec = self.get_estimator_spec(
                 features, labels, mode=ModeKeys.PREDICT)
             predictions = spec.predictions
 
             session_creator = tf.train.ChiefSessionCreator(
-                config=config.session_config)
+                config=None if config is None else config.session_config)
             tensors = dict(features=features, predictions=predictions)
             if labels is not None:
                 tensors['labels'] = labels

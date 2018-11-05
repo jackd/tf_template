@@ -214,7 +214,8 @@ _coord_fns = {
     'train': train,
     'evaluate': evaluate,
     'vis_predictions': lambda coord: coord.vis_predictions(
-        config=get_run_config(), data_mode=FLAGS.mode),
+        config=get_run_config(), data_mode=FLAGS.mode,
+        batch_size=FLAGS.batch_size),
     'profile': lambda coord: coord.create_profile(
         config=get_session_config(), skip_runs=FLAGS.n_runs,
         use_dummy_inputs=FLAGS.use_dummy_inputs),
