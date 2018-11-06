@@ -121,7 +121,7 @@ def parse_time(time_string):
     groups = [int(g) for g in groups if g is not None][-1::-1]
     dt = 1
     period = 0
-    assert(len(g) < 4)
+    assert(len(groups) < 4)
     for g in groups:
         period += g*dt
         dt *= 60
