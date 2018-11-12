@@ -24,18 +24,18 @@ class TrainModel(object):
     def max_steps(self):
         return self._max_steps
 
-    def get_total_loss_from_inference_loss(self, inference_loss):
-        tf.summary.scalar('inference_loss', inference_loss)
-        losses = [inference_loss]
-        for key in (tf.GraphKeys.REGULARIZATION_LOSSES, tf.GraphKeys.LOSSES):
-            losses.extend(tf.get_collection(key))
-        # Ensure we don't double count
-        losses = list(set(losses))
+    # def get_total_loss_from_inference_loss(self, inference_loss):
+    #     tf.summary.scalar('inference_loss', inference_loss)
+    #     losses = [inference_loss]
+    #     for key in (tf.GraphKeys.REGULARIZATION_LOSSES, tf.GraphKeys.LOSSES):
+    #         losses.extend(tf.get_collection(key))
+    #     # Ensure we don't double count
+    #     losses = list(set(losses))
 
-        if len(losses) == 1:
-            return inference_loss
-        else:
-            return tf.add_n(losses)
+    #     if len(losses) == 1:
+    #         return inference_loss
+    #     else:
+    #         return tf.add_n(losses)
 
     def get_regularization_loss(self):
         losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
@@ -52,6 +52,8 @@ class TrainModel(object):
         if reg_loss is None:
             return inference_loss
         else:
+            tf.summary.scalar('reg_loss', reg_loss)
+            tf.summary.scalar('inference_loss', inference_loss)
             return inference_loss + reg_loss
 
     def get_total_loss(self, inference, labels):

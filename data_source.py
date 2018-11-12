@@ -96,7 +96,7 @@ class DataSource(object):
 
     def get_epoch_length(self, mode):
         """Get the number of examples in the epoch."""
-        raise None
+        return None
 
     def vis_inputs(self, mode=ModeKeys.TRAIN, config=None, batch_size=None):
         """Visualize inputs by building the graph and running the session."""

@@ -206,23 +206,6 @@ class Coordinator(object):
         if data_mode is None:
             data_mode = ModeKeys.PREDICT
 
-        # def get_predictions_spec(features, labels, mode):
-        #     base_spec = self.get_estimator_spec(features, labels, mode)
-        #     predictions = dict(
-        #         predictions=base_spec.predictions,
-        #         features=features)
-        #     if labels is not None:
-        #         predictions['labels'] = labels
-        #     return tf.estimator.EstimatorSpec(
-        #         predictions=predictions, mode=mode)
-        #
-        # estimator = tf.estimator.Estimator(
-        #     model_fn=get_predictions_spec, model_dir=self.model_dir,
-        #     config=config)
-        # for prediction in estimator.predict(
-        #         lambda: self.get_inputs(mode=data_mode), **predict_kwargs):
-        #     self.vis_prediction_data(**prediction)
-
         graph = tf.Graph()
         with graph.as_default():
             features, labels = self.get_inputs(mode=data_mode, **input_kwargs)
