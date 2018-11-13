@@ -122,6 +122,8 @@ class Coordinator(object):
 
         if hasattr(warm_start, 'ckpt_to_initialize_from'):
             path = warm_start.ckpt_to_initialize_from
+            if os.path.isdir(path):
+                path = tf.train.latest_checkpoint(path)
         elif isinstance(warm_start, (str, unicode)):
             path = warm_start
         else:
