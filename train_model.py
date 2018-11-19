@@ -83,6 +83,22 @@ class TrainModel(object):
         return TrainModelBase(
             inference_loss_fn, optimization_op_fn, batch_size, max_steps)
 
+    def to_dict(self):
+        return dict(
+            inference_loss_fn=self.get_inference_loss,
+            optimization_op_fn=self.get_optimization_op,
+            batch_size=self.batch_size,
+            max_steps=self.max_steps
+        )
+
+    def rebuild(self, **kwargs):
+        kw = self.to_dict()
+        kw.update(kwargs)
+        return self._rebuild(**kw)
+
+    def _rebuild(self, **kwargs):
+        return TrainModel.from_fns(**kwargs)
+
 
 class TrainModelBase(TrainModel):
     def __init__(self, inference_loss_fn, optimization_op_fn, batch_size,
