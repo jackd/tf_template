@@ -34,7 +34,6 @@ def custom_train_end_evaluate(
     training = tf.equal(mode, 'train')
     """
     import tensorflow as tf
-    from . import hooks
     ModeKeys = tf.estimator.ModeKeys
     model_dir = coord.model_dir
     eval_summary_dir = os.path.join(model_dir, 'eval')
@@ -88,7 +87,7 @@ def custom_train_end_evaluate(
             checkpoint_hook,
             logging_hook,
             tf.train.NanTensorHook(loss),
-            hooks.NanTensorHook(loss),
+            tf.train.NanTensorHook(loss),
         ]
 
         summary_op = tf.summary.merge_all()
