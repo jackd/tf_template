@@ -321,9 +321,9 @@ class Coordinator(object):
             print('No model dir at %s' % self.model_dir)
 
     def clean(self, confirm=True):
-        from .util import get_input
+        import six
         if confirm:
-            inp = get_input(
+            inp = six.moves.input(
                 'Definitely remove saved data in %s? (y/N)' % self.model_dir)
             inp = inp.lower()
             if inp == 'y':
