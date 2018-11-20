@@ -38,8 +38,7 @@ def custom_train_end_evaluate(
     model_dir = coord.model_dir
     eval_summary_dir = os.path.join(model_dir, 'eval')
     train_summary_dir = os.path.join(model_dir, 'train')
-    # if not os.path.isdir(eval_summary_dir):
-    #     os.makedirs(eval_summary_dir)
+
     for d in train_summary_dir, eval_summary_dir:
         if not os.path.isdir(d):
             os.makedirs(d)
@@ -90,14 +89,14 @@ def custom_train_end_evaluate(
             tf.train.NanTensorHook(loss),
         ]
 
-        # summary_op = tf.summary.merge_all()
-        # if summary_op is not None:
-        #     writer = tf.summary.FileWriter(model_dir)
-        #     summary_hook = tf.train.SummarySaverHook(
-        #         save_steps=save_summary_steps,
-        #         summary_writer=writer,
-        #         summary_op=summary_op)
-        #     hooks.append(summary_hook)
+        summary_op = tf.summary.merge_all()
+        if summary_op is not None:
+            writer = tf.summary.FileWriter(model_dir)
+            summary_hook = tf.train.SummarySaverHook(
+                save_steps=save_summary_steps,
+                summary_writer=writer,
+                summary_op=summary_op)
+            hooks.append(summary_hook)
 
         train_op = spec.train_op
         eval_metric_ops = spec.eval_metric_ops
