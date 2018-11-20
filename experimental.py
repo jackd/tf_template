@@ -76,8 +76,9 @@ def custom_train_end_evaluate(
         step = tf.train.get_or_create_global_step()
         loss = spec.loss
 
+        saver = tf.train.Saver()
         checkpoint_hook = tf.train.CheckpointSaverHook(
-                model_dir, save_secs=save_checkpoints_secs)
+                model_dir, save_secs=save_checkpoints_secs, saver=saver)
         logging_hook = tf.train.LoggingTensorHook(
             dict(loss=loss, step=step), every_n_iter=log_step_count_steps,
             formatter=lambda x:
@@ -87,17 +88,16 @@ def custom_train_end_evaluate(
             checkpoint_hook,
             logging_hook,
             tf.train.NanTensorHook(loss),
-            tf.train.NanTensorHook(loss),
         ]
 
-        summary_op = tf.summary.merge_all()
-        if summary_op is not None:
-            writer = tf.summary.FileWriter(model_dir)
-            summary_hook = tf.train.SummarySaverHook(
-                save_steps=save_summary_steps,
-                summary_writer=writer,
-                summary_op=summary_op)
-            hooks.append(summary_hook)
+        # summary_op = tf.summary.merge_all()
+        # if summary_op is not None:
+        #     writer = tf.summary.FileWriter(model_dir)
+        #     summary_hook = tf.train.SummarySaverHook(
+        #         save_steps=save_summary_steps,
+        #         summary_writer=writer,
+        #         summary_op=summary_op)
+        #     hooks.append(summary_hook)
 
         train_op = spec.train_op
         eval_metric_ops = spec.eval_metric_ops
