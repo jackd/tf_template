@@ -49,8 +49,8 @@ def custom_train_end_evaluate(
     max_steps = coord.train_model.max_steps
 
     with graph.as_default():
-        train_writer = tf.summary.FileWriter(train_summary_dir, graph=graph)
-        eval_writer = tf.summary.FileWriter(eval_summary_dir, graph=graph)
+        train_writer = tf.summary.FileWriter(train_summary_dir)
+        eval_writer = tf.summary.FileWriter(eval_summary_dir)
 
         train_dataset = source.get_inputs(
             mode=ModeKeys.TRAIN, batch_size=batch_size,
@@ -92,7 +92,7 @@ def custom_train_end_evaluate(
 
         summary_op = tf.summary.merge_all()
         if summary_op is not None:
-            writer = tf.summary.FileWriter(model_dir, graph=graph)
+            writer = tf.summary.FileWriter(model_dir)
             summary_hook = tf.train.SummarySaverHook(
                 save_steps=save_summary_steps,
                 summary_writer=writer,
