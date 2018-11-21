@@ -247,7 +247,7 @@ def custom_train_and_evaluate2(
         iterator = tf.data.Iterator.from_string_handle(
             handle, train_ds.output_types, train_ds.output_shapes)
 
-        train_handle = eval_iter.string_handle()
+        train_handle = train_iter.string_handle()
 
         features, labels = iterator.get_next()
         spec = coord.get_estimator_spec(features, labels, mode)
@@ -290,8 +290,7 @@ def custom_train_and_evaluate2(
             hooks.append(summary_hook)
 
         with tf.train.MonitoredSession(hooks=hooks) as sess:
-            eval_handle, train_handle = sess.run((eval_handle, train_handle))
-            eval_feed[handle] = eval_handle
+            train_handle = sess.run(train_handle)
             train_feed = {mode: ModeKeys.TRAIN, handle: train_handle}
             i = 0
             train_op = spec.train_op
