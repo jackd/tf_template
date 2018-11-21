@@ -243,8 +243,9 @@ def custom_train_and_evaluate2(
         eval_handle = eval_iter.string_handle()
 
         mode = tf.placeholder_with_default('eval', shape=(), name='mode')
-        handle = tf.placeholder_with_default(
-            eval_handle, shape=(), name='data_handle')
+        handle = tf.cond(
+            tf.equal(mode, ModeKeys.TRAIN),
+            lambda: train_handle, lambda: eval_handle)
 
         iterator = tf.data.Iterator.from_string_handle(
             handle, train_ds.output_types, train_ds.output_shapes)
@@ -291,7 +292,7 @@ def custom_train_and_evaluate2(
 
         with tf.train.MonitoredSession(hooks=hooks) as sess:
             train_handle = sess.run(train_handle)
-            train_feed = {mode: ModeKeys.TRAIN, handle: train_handle}
+            train_feed = {mode: ModeKeys.TRAIN}
             i = 0
             train_op = spec.train_op
             while True:
