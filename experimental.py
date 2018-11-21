@@ -6,13 +6,21 @@ import os
 
 
 def register_experimental():
-    from .cli import register_coord_fn, FLAGS
+    from .cli import register_coord_fn, flags, FLAGS
+    flags.DEFINE_integer(
+        'eval_every_secs', default=None,
+        help='how often to evaluate in seconds')
+    flags.DEFINE_integer(
+        'eval_every_steps', default=None,
+        help='how often to evaluate in steps')
     def f2(coord):
         kwargs = dict(
             save_checkpoints_steps=FLAGS.save_checkpoints_steps,
             save_checkpoints_secs=FLAGS.save_checkpoints_secs,
             save_summary_steps=FLAGS.save_summary_steps,
             log_step_count_steps=FLAGS.log_step_count_steps,
+            eval_every_secs=FLAGS.eval_every_secs,
+            eval_every_steps=FLAGS.eval_every_steps,
             n_eval_steps=FLAGS.n_eval_steps,
         )
         return custom_train_and_evaluate2(coord, **kwargs)
@@ -212,9 +220,13 @@ def custom_train_and_evaluate2(
         save_checkpoints_secs=None, save_checkpoints_steps=None,
         save_summary_steps=100,
         log_step_count_steps=100,
+        eval_every_secs=None, eval_every_steps=None,
         n_eval_steps=None):
     import tensorflow as tf
-    from .listeners import EvalListener
+    from .eval_writer import EvalWriter
+    from .hooks import PeriodicEvalHook
+    # from .listeners import EvalListener
+    # from .hooks import AtEndHook
     ModeKeys = tf.estimator.ModeKeys
 
     if save_checkpoints_secs is None and save_checkpoints_steps is None:
@@ -265,14 +277,21 @@ def custom_train_and_evaluate2(
 
         saver = tf.train.Saver()
 
-        eval_listener = EvalListener(
+        # eval_listener = EvalListener(
+        eval_writer = EvalWriter(
             eval_iter.initializer, eval_metric_ops,
             summary_writer=tf.summary.FileWriter(logdir=eval_dir),
             n_eval_steps=n_eval_steps)
+
+        eval_hook = PeriodicEvalHook(
+            eval_writer,
+            every_steps=eval_every_steps, every_secs=eval_every_secs,
+            at_end=True)
+
         checkpoint_hook = tf.train.CheckpointSaverHook(
                 model_dir, save_secs=save_checkpoints_secs,
                 save_steps=save_checkpoints_steps,
-                saver=saver, listeners=[eval_listener])
+                saver=saver)
         logging_hook = tf.train.LoggingTensorHook(
             dict(loss=loss, step=step), every_n_iter=log_step_count_steps,
             formatter=lambda x:
@@ -282,6 +301,7 @@ def custom_train_and_evaluate2(
             checkpoint_hook,
             logging_hook,
             tf.train.NanTensorHook(loss),
+            eval_hook,
         ]
         if train_summary is not None:
             summary_hook = tf.train.SummarySaverHook(
@@ -292,6 +312,8 @@ def custom_train_and_evaluate2(
 
         session_creator = tf.train.ChiefSessionCreator(
             checkpoint_dir=model_dir)
+
+        s = None
 
         with tf.train.MonitoredSession(
                 session_creator=session_creator, hooks=hooks) as sess:
