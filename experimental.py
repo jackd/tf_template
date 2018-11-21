@@ -290,7 +290,11 @@ def custom_train_and_evaluate2(
                 summary_op=train_summary)
             hooks.append(summary_hook)
 
-        with tf.train.MonitoredSession(hooks=hooks) as sess:
+        session_creator = tf.train.ChiefSessionCreator(
+            checkpoint_dir=model_dir)
+
+        with tf.train.MonitoredSession(
+                session_creator=session_creator, hooks=hooks) as sess:
             train_feed = {mode: ModeKeys.TRAIN}
             i = 0
             train_op = spec.train_op
