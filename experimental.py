@@ -6,9 +6,21 @@ import os
 
 
 def register_experimental():
-    from .cli import register_coord_fn
+    from .cli import register_coord_fn, FLAGS
+    def f2(coord):
+        kwargs = dict(
+            save_checkpoints_steps=FLAGS.save_checkpoints_steps,
+            save_checkpoints_secs=FLAGS.save_checkpoints_secs,
+            save_summary_steps=FLAGS.save_summary_steps,
+            log_step_count_steps=FLAGS.log_step_count_steps,
+            n_eval_steps=FLAGS.n_eval_steps,
+        )
+        return custom_train_and_evaluate2(coord, **kwargs)
+
     for k in ('custom_train_and_evaluate', 'custom_train_and_eval'):
         register_coord_fn(k, custom_train_end_evaluate)
+        register_coord_fn('%s2' % k, f2)
+
 
 
 def _custom_train_and_evaluate(coord):
@@ -191,3 +203,96 @@ def custom_train_end_evaluate(
             raw_sess.run(eval_init_op)
             vals = metrics_loop(raw_sess, eval_feed)
             eval_writer.add_summary(vals, i)
+
+
+
+def custom_train_and_evaluate2(
+        coord, steps=None, max_steps=None,
+        save_checkpoints_secs=None, save_checkpoints_steps=None,
+        save_summary_steps=100,
+        log_step_count_steps=100,
+        n_eval_steps=None):
+    import tensorflow as tf
+    from .listeners import EvalListener
+    ModeKeys = tf.estimator.ModeKeys
+
+    if save_checkpoints_secs is None and save_checkpoints_steps is None:
+        save_checkpoints_secs = 600
+
+    model_dir = coord.model_dir
+    eval_dir = os.path.join(model_dir, 'eval')
+    if not os.path.isdir(eval_dir):
+        os.makedirs(eval_dir)
+
+    graph = tf.Graph()
+    with graph.as_default():
+        ds = coord.data_source
+        batch_size = coord.train_model.batch_size
+        train_ds = ds.get_inputs(mode=ModeKeys.TRAIN, batch_size=batch_size)
+        eval_ds = ds.get_inputs(mode=ModeKeys.EVAL, batch_size=batch_size)
+        if not all(
+                isinstance(d, tf.data.Dataset) for d in (train_ds, eval_ds)):
+            raise RuntimeError('get_inputs must return a tf.data.Dataset')
+
+        train_iter = train_ds.make_one_shot_iterator()
+        eval_iter = eval_ds.make_initializable_iterator()
+
+        mode = tf.placeholder(dtype=tf.string, shape=(), name='mode')
+        handle = tf.cond(
+            tf.equal(mode, ModeKeys.TRAIN),
+            train_iter.string_handle,
+            eval_iter.string_handle
+        )
+        iterator = tf.data.Iterator.from_string_handle(
+            handle, train_ds.output_types, train_ds.output_shapes)
+
+        features, labels = iterator.get_next()
+        spec = coord.get_estimator_spec(features, labels, mode)
+        loss = spec.loss
+        step = tf.train.get_global_step()
+
+        train_summary = tf.summary.merge_all()
+
+
+        eval_metric_ops = spec.eval_metric_ops
+        if 'loss' in eval_metric_ops:
+            raise RuntimeError(
+                'Reserved key already present in eval_metric_ops: "loss"')
+        eval_metric_ops['loss'] = tf.metrics.mean(loss)
+
+        saver = tf.train.Saver()
+        eval_listener = EvalListener(
+            eval_iter.initializer, eval_metric_ops, mode,
+            summary_writer=tf.summary.FileWriter(logdir=eval_dir),
+            n_eval_steps=n_eval_steps)
+        checkpoint_hook = tf.train.CheckpointSaverHook(
+                model_dir, save_secs=save_checkpoints_secs,
+                save_steps=save_checkpoints_steps,
+                saver=saver, listeners=[eval_listener])
+        logging_hook = tf.train.LoggingTensorHook(
+            dict(loss=loss, step=step), every_n_iter=log_step_count_steps,
+            formatter=lambda x:
+                'loss at step %d: %s' % (x['step'], str(x['loss'])))
+
+        hooks = [
+            checkpoint_hook,
+            logging_hook,
+            tf.train.NanTensorHook(loss),
+        ]
+        if train_summary is not None:
+            summary_hook = tf.train.SummarySaverHook(
+                save_steps=save_summary_steps,
+                summary_writer=tf.summary.FileWriter(logdir=model_dir),
+                summary_op=train_summary)
+            hooks.append(summary_hook)
+
+        with tf.train.MonitoredSession(hooks=hooks) as sess:
+            i = 0
+            feed = {mode: ModeKeys.TRAIN}
+            train_op = spec.train_op
+            while True:
+                s, _ = sess.run((step, train_op), feed)
+                i += 1
+                if (steps is not None and i >= steps or
+                        max_steps is not None and s >= steps):
+                    break
