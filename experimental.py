@@ -238,13 +238,16 @@ def custom_train_and_evaluate2(
         eval_iter = eval_ds.make_initializable_iterator()
 
         mode = tf.placeholder(dtype=tf.string, shape=(), name='mode')
-        handle = tf.cond(
-            tf.equal(mode, ModeKeys.TRAIN),
-            train_iter.string_handle,
-            eval_iter.string_handle
-        )
+        # handle = tf.cond(
+        #     tf.equal(mode, ModeKeys.TRAIN),
+        #     train_iter.string_handle,
+        #     eval_iter.string_handle
+        # )
+        handle = tf.placeholder(dtype=tf.string, shape=(), name='data_handle')
         iterator = tf.data.Iterator.from_string_handle(
             handle, train_ds.output_types, train_ds.output_shapes)
+
+        train_handle = eval_iter.string_handle()
 
         features, labels = iterator.get_next()
         spec = coord.get_estimator_spec(features, labels, mode)
@@ -253,7 +256,6 @@ def custom_train_and_evaluate2(
 
         train_summary = tf.summary.merge_all()
 
-
         eval_metric_ops = spec.eval_metric_ops
         if 'loss' in eval_metric_ops:
             raise RuntimeError(
@@ -261,8 +263,9 @@ def custom_train_and_evaluate2(
         eval_metric_ops['loss'] = tf.metrics.mean(loss)
 
         saver = tf.train.Saver()
+
         eval_listener = EvalListener(
-            eval_iter.initializer, eval_metric_ops, mode,
+            eval_iter, eval_metric_ops, mode, handle,
             summary_writer=tf.summary.FileWriter(logdir=eval_dir),
             n_eval_steps=n_eval_steps)
         checkpoint_hook = tf.train.CheckpointSaverHook(
@@ -287,12 +290,15 @@ def custom_train_and_evaluate2(
             hooks.append(summary_hook)
 
         with tf.train.MonitoredSession(hooks=hooks) as sess:
+            eval_handle, train_handle = sess.run((eval_handle, train_handle))
+            eval_feed[handle] = eval_handle
+            train_feed = {mode: ModeKeys.TRAIN, handle: train_handle}
             i = 0
-            feed = {mode: ModeKeys.TRAIN}
             train_op = spec.train_op
             while True:
-                s, _ = sess.run((step, train_op), feed)
+                s, _ = sess.run((step, train_op), train_feed)
                 i += 1
                 if (steps is not None and i >= steps or
                         max_steps is not None and s >= steps):
+                    print('breaking!')
                     break

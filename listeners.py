@@ -8,9 +8,12 @@ import tensorflow as tf
 
 class EvalListener(tf.train.CheckpointSaverListener):
     def __init__(
-            self, eval_iter_initializer, eval_metric_ops, mode,
+            self, eval_iter, eval_metric_ops, mode, handle,
             output_dir=None, summary_writer=None, n_eval_steps=None):
-        self._iter_init_op = eval_iter_initializer
+        self._iter_init_op = eval_iter.initializer
+        self._eval_handle = eval_iter.string_handle()
+        self._handle = handle
+        self._feed = {mode: tf.estimator.ModeKeys.EVAL, handle: None}
         self._mode = mode
         self._keys = list(eval_metric_ops.keys())
         eval_metric_ops = [eval_metric_ops[k] for k in eval_metric_ops]
@@ -36,6 +39,8 @@ class EvalListener(tf.train.CheckpointSaverListener):
         self._n_eval_steps = n_eval_steps
 
     def _write(self, session, global_step_value):
+        if self._feed[self._handle] is None:
+            self._feed[self._handle] = session.run(self._eval_handle)
         if self._last_write_step == global_step_value:
             tf.logging.info(
                 'Summary for step %d already written - skipping'
@@ -62,7 +67,7 @@ class EvalListener(tf.train.CheckpointSaverListener):
             (global_step_value, str(values)))
 
     def after_save(self, session, global_step_value):
-        self._write(session, global_step_value)
+        return self._write(session, global_step_value)
 
     def end(self, session, global_step_value):
         self._write(session, global_step_value)
