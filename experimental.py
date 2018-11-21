@@ -291,7 +291,6 @@ def custom_train_and_evaluate2(
             hooks.append(summary_hook)
 
         with tf.train.MonitoredSession(hooks=hooks) as sess:
-            train_handle = sess.run(train_handle)
             train_feed = {mode: ModeKeys.TRAIN}
             i = 0
             train_op = spec.train_op
