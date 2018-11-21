@@ -230,7 +230,8 @@ def custom_train_and_evaluate2(
         ds = coord.data_source
         batch_size = coord.train_model.batch_size
         train_ds = ds.get_inputs(mode=ModeKeys.TRAIN, batch_size=batch_size)
-        eval_ds = ds.get_inputs(mode=ModeKeys.EVAL, batch_size=batch_size)
+        eval_ds = ds.get_inputs(
+            mode=ModeKeys.EVAL, batch_size=batch_size, repeat_count=1)
         if not all(
                 isinstance(d, tf.data.Dataset) for d in (train_ds, eval_ds)):
             raise RuntimeError('get_inputs must return a tf.data.Dataset')
@@ -238,16 +239,10 @@ def custom_train_and_evaluate2(
         train_iter = train_ds.make_one_shot_iterator()
         eval_iter = eval_ds.make_initializable_iterator()
 
-        mode = tf.placeholder_with_default('eval', shape=(), name='mode')
-        # handle = tf.cond(
-        #     tf.equal(mode, ModeKeys.TRAIN),
-        #     train_iter.string_handle,
-        #     eval_iter.string_handle
-        # )
-
         train_handle = train_iter.string_handle()
         eval_handle = eval_iter.string_handle()
 
+        mode = tf.placeholder_with_default('eval', shape=(), name='mode')
         handle = tf.placeholder_with_default(
             eval_handle, shape=(), name='data_handle')
 
