@@ -8,13 +8,9 @@ import tensorflow as tf
 
 class EvalListener(tf.train.CheckpointSaverListener):
     def __init__(
-            self, eval_iter, eval_metric_ops, mode, handle,
+            self, eval_iter_init, eval_metric_ops,
             output_dir=None, summary_writer=None, n_eval_steps=None):
-        self._iter_init_op = eval_iter.initializer
-        self._eval_handle = eval_iter.string_handle()
-        self._handle = handle
-        self._feed = {mode: tf.estimator.ModeKeys.EVAL, handle: None}
-        self._mode = mode
+        self._iter_init = eval_iter_init
         self._keys = list(eval_metric_ops.keys())
         eval_metric_ops = [eval_metric_ops[k] for k in eval_metric_ops]
         self._update_ops = [op[1] for op in eval_metric_ops]
@@ -39,22 +35,19 @@ class EvalListener(tf.train.CheckpointSaverListener):
         self._n_eval_steps = n_eval_steps
 
     def _write(self, session, global_step_value):
-        if self._feed[self._handle] is None:
-            self._feed[self._handle] = session.run(self._eval_handle)
         if self._last_write_step == global_step_value:
             tf.logging.info(
                 'Summary for step %d already written - skipping'
                 % global_step_value)
             return
 
-        session.run((self._iter_init_op, self._reset_values_op))
-        feed = {self._mode: tf.estimator.ModeKeys.EVAL}
+        session.run((self._iter_init, self._reset_values_op))
         fetch = (self._values, self._summary, self._update_ops)
 
         i = 0
         while True:
             try:
-                values, summary, _ = session.run(fetch, feed)
+                values, summary, _ = session.run(fetch)
                 i += 1
                 if self._n_eval_steps is not None and i >= self._n_eval_steps:
                     break

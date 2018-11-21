@@ -79,11 +79,12 @@ def custom_train_end_evaluate(
         eval_init_op = iterator.make_initializer(eval_dataset)
 
         features, labels = iterator.get_next()
-        mode = tf.placeholder(shape=(), dtype=tf.string, name='mode')
+        mode = tf.placeholder(dtype=tf.string, shape=(), name='mode')
         train_feed = {mode: ModeKeys.TRAIN}
         eval_feed = {mode: ModeKeys.EVAL}
 
-        spec = coord.get_estimator_spec(features, labels, mode)
+        with tf.device('/cpu:0'):
+            spec = coord.get_estimator_spec(features, labels, mode)
         step = tf.train.get_or_create_global_step()
         loss = spec.loss
 
@@ -138,7 +139,7 @@ def custom_train_end_evaluate(
         #     checkpoint_dir=model_dir, scaffold=scaffold)
 
         def metrics_loop(sess, feed_dict):
-            sess.run(local_init_op)
+            sess.run(local_init_op, feed_dict=feed_dict)
             while True:
                 try:
                     vals, _ = sess.run(
@@ -237,17 +238,21 @@ def custom_train_and_evaluate2(
         train_iter = train_ds.make_one_shot_iterator()
         eval_iter = eval_ds.make_initializable_iterator()
 
-        mode = tf.placeholder(dtype=tf.string, shape=(), name='mode')
+        mode = tf.placeholder_with_default('eval', shape=(), name='mode')
         # handle = tf.cond(
         #     tf.equal(mode, ModeKeys.TRAIN),
         #     train_iter.string_handle,
         #     eval_iter.string_handle
         # )
-        handle = tf.placeholder(dtype=tf.string, shape=(), name='data_handle')
-        iterator = tf.data.Iterator.from_string_handle(
-            handle, train_ds.output_types, train_ds.output_shapes)
 
         train_handle = train_iter.string_handle()
+        eval_handle = eval_iter.string_handle()
+
+        handle = tf.placeholder_with_default(
+            eval_handle, shape=(), name='data_handle')
+
+        iterator = tf.data.Iterator.from_string_handle(
+            handle, train_ds.output_types, train_ds.output_shapes)
 
         features, labels = iterator.get_next()
         spec = coord.get_estimator_spec(features, labels, mode)
@@ -265,7 +270,7 @@ def custom_train_and_evaluate2(
         saver = tf.train.Saver()
 
         eval_listener = EvalListener(
-            eval_iter, eval_metric_ops, mode, handle,
+            eval_iter.initializer, eval_metric_ops,
             summary_writer=tf.summary.FileWriter(logdir=eval_dir),
             n_eval_steps=n_eval_steps)
         checkpoint_hook = tf.train.CheckpointSaverHook(
@@ -299,5 +304,4 @@ def custom_train_and_evaluate2(
                 i += 1
                 if (steps is not None and i >= steps or
                         max_steps is not None and s >= steps):
-                    print('breaking!')
                     break
