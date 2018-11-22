@@ -50,7 +50,7 @@ def only_one(a, b, default_a, a_key, b_key):
 
 
 def custom_train_and_evaluate(
-        coord, steps=None, max_steps=None,
+        coord,
         save_checkpoints_secs=None, save_checkpoints_steps=None,
         save_summary_steps=None,
         save_summary_secs=None,
@@ -72,6 +72,7 @@ def custom_train_and_evaluate(
     save_summary_steps, save_summary_secs = only_one(
         save_summary_steps, save_summary_secs, 100,
         'save_summary_steps', 'save_summary_secs')
+    max_steps = coord.train_model.max_steps
 
     model_dir = coord.model_dir
     eval_dir = os.path.join(model_dir, 'eval')
@@ -206,6 +207,5 @@ def custom_train_and_evaluate(
                 s, _, __ = sess.run(
                     (step, train_op, train_metrics.updates), train_feed)
                 i += 1
-                if (steps is not None and i >= steps or
-                        max_steps is not None and s >= steps):
+                if s >= max_steps:
                     break
