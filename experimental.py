@@ -154,8 +154,6 @@ def custom_train_and_evaluate(
                 except tf.errors.OutOfRangeError:
                     break
             eval_writer.add_summary(summary, step)
-            print(step)
-            print('-----------')
             tf.logging.info('Step %d evaluation: %s' % (step, str(values)))
 
         eval_hook = InterruptorHook(
