@@ -132,11 +132,6 @@ def custom_train_and_evaluate(
 
         saver = tf.train.Saver()
 
-        # eval_listener = EvalListener(
-        # eval_writer = EvalWriter(
-        #     eval_iter.initializer, eval_metrics,
-        #     summary_writer=tf.summary.FileWriter(logdir=eval_dir),
-        #     n_eval_steps=n_eval_steps)
         eval_writer = tf.summary.FileWriter(eval_dir)
 
         def interrupt_body(sess, step):
@@ -161,12 +156,6 @@ def custom_train_and_evaluate(
             interrupt_body, every_secs=eval_every_secs,
             every_steps=eval_every_steps)
 
-
-        # eval_hook = PeriodicEvalHook(
-        #     eval_writer,
-        #     every_steps=eval_every_steps, every_secs=eval_every_secs,
-        #     at_end=True)
-
         checkpoint_hook = tf.train.CheckpointSaverHook(
                 model_dir, save_secs=save_checkpoints_secs,
                 save_steps=save_checkpoints_steps,
@@ -185,10 +174,6 @@ def custom_train_and_evaluate(
 
         if train_summary is not None:
             train_writer = tf.summary.FileWriter(logdir=model_dir)
-            # summary_hook = tf.train.SummarySaverHook(
-            #     save_steps=save_summary_steps,
-            #     summary_writer=train_writer,
-            #     summary_op=train_summary)
             summary_hook = ResetSummaryHook(
                 train_writer, train_summary, train_metrics.init,
                 every_steps=save_summary_steps, every_secs=save_summary_secs)
