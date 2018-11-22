@@ -35,11 +35,13 @@ class InterruptorListener(object):
 
 class InterruptorHook(tf.train.SessionRunHook):
     def __init__(
-            self, callback, every_steps=None, every_secs=None, listeners=()):
+            self, callback, every_steps=None, every_secs=None, at_end=True,
+            listeners=()):
         self._callback = callback
         self._timer = tf.train.SecondOrStepTimer(
             every_secs=every_secs, every_steps=every_steps)
         self._listeners = tuple(listeners)
+        self._at_end = at_end
 
     def after_create_session(self, session, coord):
         self._sess = session
@@ -59,17 +61,26 @@ class InterruptorHook(tf.train.SessionRunHook):
         else:
             return None
 
+    def _interrupt(self, step):
+        for listener in self._listeners:
+                listener.before_interrupt(self._sess, step)
+        self._callback(self._sess, step)
+        for listener in self._listeners:
+            listener.after_interrupt(self._sess, step)
+
     def after_run(self, run_context, run_values):
         if self._should_trigger:
-            sess = self._sess
             step = run_values.results['step']
-            for listener in self._listeners:
-                listener.before_interrupt(sess, step)
-            self._callback(self._sess, step)
-            for listener in self._listeners:
-                listener.after_interrupt(self._sess, step)
+            self._interrupt(step)
             self._timer.update_last_triggered_step(self._iter_count)
         self._iter_count += 1
+
+    def end(self, session):
+        if self._at_end:
+            step = self._sess.run(self._step)
+            if self._timer.last_triggered_step != step:
+                self._interrupt(step)
+
 
 class AtEndHook(tf.train.SessionRunHook):
     def __init__(self, callback):
