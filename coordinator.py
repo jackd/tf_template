@@ -52,11 +52,15 @@ class Coordinator(object):
     def model_dir(self):
         return self._model_dir
 
-    def get_eval_metric_ops(self, predictions, labels):
+    def get_eval_metric_ops(self, predictions, labels, name=None):
         if self._eval_metric_ops_fn is None:
             return None
         else:
-            return self._eval_metric_ops_fn(predictions, labels)
+            if name is not None:
+                with tf.variable_scope(name):
+                   return self._eval_metric_ops_fn(predictions, labels)
+            else:
+                return self._eval_metric_ops_fn(predictions, labels)
 
     def get_custom_hooks(self, mode):
         if self._custom_hooks_fn is None:
@@ -77,7 +81,7 @@ class Coordinator(object):
 
         loss = self.train_model.get_total_loss(inference, labels)
         kwargs['eval_metric_ops'] = self.get_eval_metric_ops(
-            predictions, labels)
+            predictions, labels, name='eval_metrics')
 
         kwargs['loss'] = loss
         if mode == ModeKeys.EVAL:

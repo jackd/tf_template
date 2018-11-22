@@ -256,3 +256,28 @@ def coord_main(coord):
     if FLAGS.tf_verbosity is not None:
         set_verbosity(FLAGS.tf_verbosity)
     return _coord_fns[action](coord)
+
+
+def register_experimental():
+    from .experimental import custom_train_and_evaluate
+    flags.DEFINE_integer(
+        'eval_every_secs', default=None,
+        help='how often to evaluate in seconds')
+    flags.DEFINE_integer(
+        'eval_every_steps', default=None,
+        help='how often to evaluate in steps')
+    def f2(coord):
+        kwargs = dict(
+            save_checkpoints_steps=FLAGS.save_checkpoints_steps,
+            save_checkpoints_secs=FLAGS.save_checkpoints_secs,
+            save_summary_steps=FLAGS.save_summary_steps,
+            log_step_count_steps=FLAGS.log_step_count_steps,
+            eval_every_secs=FLAGS.eval_every_secs,
+            eval_every_steps=FLAGS.eval_every_steps,
+            n_eval_steps=FLAGS.n_eval_steps,
+        )
+        return custom_train_and_evaluate(coord, **kwargs)
+
+    for k in ('custom_train_and_evaluate', 'custom_train_and_eval'):
+        # register_coord_fn(k, custom_train_end_evaluate)
+        register_coord_fn(k, f2)

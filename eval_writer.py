@@ -5,21 +5,34 @@ import tensorflow as tf
 import os
 
 
+class Evaluator(object):
+    def __init__(
+            self, data_iter_init, fetches, feed_dict=None, n_eval_steps=None):
+        self._data_iter_init = data_iter_init
+        self._fetches = fetches
+        self._feed_dict = feed_dict
+        self._n_eval_steps = n_eval_steps
+
+    def evaluate(self, session):
+        session.run(self._data_iter_init)
+        i = 0
+        while True:
+            try:
+                values = session.run(self._fetches)
+                i += 1
+                if self._n_eval_steps is not None and i >= self._n_eval_steps:
+                    break
+            except tf.errors.OutOfRangeError:
+                break
+        return values
+
+
+
 class EvalWriter(object):
     def __init__(
-            self, eval_iter_init, eval_metric_ops, output_dir=None,
+            self, data_iter_init, eval_metrics, output_dir=None,
             summary_writer=None, n_eval_steps=None):
-        self._iter_init = eval_iter_init
-        self._keys = list(eval_metric_ops.keys())
-        eval_metric_ops = [eval_metric_ops[k] for k in eval_metric_ops]
-        self._update_ops = [op[1] for op in eval_metric_ops]
-        self._values = [op[0] for op in eval_metric_ops]
-        self._reset_values_op = tf.variables_initializer(
-            tf.local_variables(), name='metrics_reset')
-        self._summary = tf.summary.merge([
-            tf.summary.scalar(k, v, family='epoch_metrics')
-            for k, v in zip(self._keys, self._values)])
-        self._summary_writer = None
+        self._eval_metrics = eval_metrics
         if summary_writer is None:
             if output_dir is None:
                 raise ValueError(
@@ -32,6 +45,10 @@ class EvalWriter(object):
         self._summary_writer = summary_writer
         self._last_write_step = None
         self._n_eval_steps = n_eval_steps
+        self._init = (data_iter_init, self._eval_metrics.init)
+        self._fetch = (
+            self._eval_metrics.values, self._eval_metrics.summary,
+            self._eval_metrics.updates)
 
     def write(self, session, global_step_value):
         if self._last_write_step == global_step_value:
@@ -40,13 +57,12 @@ class EvalWriter(object):
                 % global_step_value)
             return
 
-        session.run((self._iter_init, self._reset_values_op))
-        fetch = (self._values, self._summary, self._update_ops)
+        session.run(self._init)
 
         i = 0
         while True:
             try:
-                values, summary, _ = session.run(fetch)
+                values, summary, _ = session.run(self._fetch)
                 i += 1
                 if self._n_eval_steps is not None and i >= self._n_eval_steps:
                     break
