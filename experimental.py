@@ -72,6 +72,9 @@ def custom_train_and_evaluate(
     save_summary_steps, save_summary_secs = only_one(
         save_summary_steps, save_summary_secs, 100,
         'save_summary_steps', 'save_summary_secs')
+    eval_every_secs, eval_every_steps = only_one(
+        eval_every_secs, eval_every_steps, 600,
+        'eval_every_secs', 'eval_every_steps')
     max_steps = coord.train_model.max_steps
 
     model_dir = coord.model_dir
