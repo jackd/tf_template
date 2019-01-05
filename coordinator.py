@@ -258,7 +258,7 @@ class Coordinator(object):
             batch_size=None, path=None, skip_runs=10, use_dummy_inputs=False,
             config=None):
         import os
-        from tf_toolbox.profile import create_profile
+        from .profile import create_profile
         if batch_size is None:
             batch_size = self.train_model.batch_size
 
@@ -301,7 +301,7 @@ class Coordinator(object):
     def report_train_tests(
             self, variable_change_test=True, update_ops_test=True,
             steps=5, config=None):
-        import tf_toolbox.testing
+        from . import testing
 
         def get_train_op():
             features, labels = self.get_inputs(ModeKeys.TRAIN)
@@ -309,11 +309,11 @@ class Coordinator(object):
                 features, labels, ModeKeys.TRAIN).train_op
 
         if variable_change_test:
-            tf_toolbox.testing.report_train_val_changes(
+            testing.report_train_val_changes(
                 get_train_op, steps=steps, config=config)
 
         if update_ops_test:
-            tf_toolbox.testing.report_update_ops_run(
+            testing.report_update_ops_run(
                 get_train_op, config=config)
 
     def _clean(self):

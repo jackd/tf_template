@@ -122,7 +122,7 @@ class DataSource(object):
 
     def create_profile(
             self, path, mode, batch_size, skip_runs=10, config=None):
-        from tf_toolbox.profile import create_profile
+        from .profile import create_profile
         create_profile(
             lambda: self.get_inputs(mode, batch_size), path,
             skip_runs=skip_runs, config=config)

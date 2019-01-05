@@ -6,7 +6,7 @@ from __future__ import print_function
 class InferenceModel(object):
     def get_inference(self, features, mode):
         """
-        Get the inference associated with this modelself.
+        Get the inference associated with this model.
 
         This should create all variables necessary. For example, for
         classification problems, this would be the logits.

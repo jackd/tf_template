@@ -11,11 +11,6 @@ To run, ensure the directory in which this repository is cloned is on your `PYTH
 export PYTHONPATH=$PYTHONPATH:/path/to/parent_dir
 ```
 
-Creating profiles and running tests also requires the [tf_toolbox repository](https://github.com/jackd/tf_toolbox)
-```
-git clone https://github.com/jackd/tf_toolbox.git
-```
-
 ## Usage
 We define 4 helper classes to encourage modularity:
 * [DataSource](./data_source.py): for creating data pipelines and visualizing, independently of trained models.
